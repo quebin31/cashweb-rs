@@ -1,5 +1,4 @@
-use std::pin::Pin;
-
+use async_trait::async_trait;
 use http::{header::HeaderValue, header::AUTHORIZATION, Request};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +38,12 @@ fn extract_pop_query(value: &str) -> Option<&str> {
 pub trait ResourceGuard {
     type ValidationError;
     type Body;
-    fn validate_token(&mut self, token: &str) -> Result<(), Self::ValidationError>;
+    type Context;
+    fn validate_token(
+        &mut self,
+        token: &str,
+        context: &mut Self::Context,
+    ) -> Result<(), Self::ValidationError>;
 }
 
 pub trait ResourceGuardExt: ResourceGuard {
@@ -48,6 +52,7 @@ pub trait ResourceGuardExt: ResourceGuard {
     fn pop_resource_guard(
         &mut self,
         req: &Request<Self::Body>,
+        context: &mut Self::Context,
     ) -> Result<(), GuardError<Self::ValidationError>> {
         // Search for POP token
         let token_str = if let Some(token_str) = req
@@ -68,23 +73,35 @@ pub trait ResourceGuardExt: ResourceGuard {
         } else {
             return Err(GuardError::NoAuthData);
         };
-        self.validate_token(token_str)?;
+        self.validate_token(token_str, context)?;
         Ok(())
     }
 }
 
+#[async_trait]
 pub trait ResourceGuardAsync {
     type ValidationError;
     type Body;
-    fn validate_token(&mut self, token: &str) -> Result<(), Self::ValidationError>;
+    type Context;
+    async fn validate_token(
+        &mut self,
+        token: &str,
+        context: &mut Self::Context,
+    ) -> Result<(), Self::ValidationError>;
 }
 
-pub trait ResourceGuardAsyncExt: ResourceGuard {
+#[async_trait]
+pub trait ResourceGuardAsyncExt: ResourceGuardAsync
+where
+    Self::Body: Sync,
+    Self::Context: Sync + Send,
+{
     /// Proof-of-Payment guard surounding protected resource
     #[inline]
-    fn guard(
+    async fn guard(
         &mut self,
         req: &Request<Self::Body>,
+        context: &mut Self::Context,
     ) -> Result<(), GuardError<Self::ValidationError>> {
         // Search for POP token
         let token_str = if let Some(token_str) = req
@@ -105,7 +122,7 @@ pub trait ResourceGuardAsyncExt: ResourceGuard {
         } else {
             return Err(GuardError::NoAuthData);
         };
-        self.validate_token(token_str)?;
+        self.validate_token(token_str, context).await?;
         Ok(())
     }
 }
