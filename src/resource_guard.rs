@@ -80,14 +80,16 @@ pub trait ResourceGuardExt: ResourceGuard {
 
 #[async_trait]
 pub trait ResourceGuardAsync {
+    type ValidationResult;
     type ValidationError;
     type Body;
     type Context;
+
     async fn validate_token(
         &mut self,
         token: &str,
         context: &mut Self::Context,
-    ) -> Result<(), Self::ValidationError>;
+    ) -> Result<Self::ValidationResult, Self::ValidationError>;
 }
 
 #[async_trait]
@@ -98,11 +100,11 @@ where
 {
     /// Proof-of-Payment guard surounding protected resource
     #[inline]
-    async fn guard(
+    async fn guard<'a>(
         &mut self,
-        req: &Request<Self::Body>,
+        req: &'a Request<Self::Body>,
         context: &mut Self::Context,
-    ) -> Result<(), GuardError<Self::ValidationError>> {
+    ) -> Result<(Self::ValidationResult, &'a str), GuardError<Self::ValidationError>> {
         // Search for POP token
         let token_str = if let Some(token_str) = req
             .headers()
@@ -122,7 +124,7 @@ where
         } else {
             return Err(GuardError::NoAuthData);
         };
-        self.validate_token(token_str, context).await?;
-        Ok(())
+        let result = self.validate_token(token_str, context).await?;
+        Ok((result, token_str))
     }
 }
