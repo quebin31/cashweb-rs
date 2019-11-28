@@ -23,7 +23,7 @@ pub enum PaymentError<P, C, E> {
 }
 
 #[async_trait]
-pub trait PaymentProcessorAsync {
+pub trait PaymentProcessor {
     type ProcessingError;
     type Body;
     type Chunk;
@@ -60,7 +60,7 @@ pub trait PaymentProcessorAsync {
 }
 
 #[async_trait]
-pub trait PaymentProcessorAsyncExt: PaymentProcessorAsync
+pub trait PaymentProcessorExt: PaymentProcessor
 where
     Self::Body: TryStream<Ok = Self::Chunk, Error = Self::BodyStreamError> + Sync + Send + Copy,
     Self::Chunk: AsRef<[u8]> + Sync + Send,
