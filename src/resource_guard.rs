@@ -6,6 +6,7 @@ use futures::{
     task::{Context, Poll},
 };
 use http::{header::HeaderValue, header::AUTHORIZATION, Request};
+use tower_layer::Layer;
 use tower_service::Service;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,20 +41,22 @@ fn extract_pop_query(value: &str) -> Option<&str> {
 #[derive(Clone)]
 pub struct ResourceGuard<S, V> {
     service: S,
-    validation_service: V,
+    validator: V,
+}
+
+impl<S, V> ResourceGuard<S, V> {
+    fn new(service: S, validator: V) -> Self {
+        ResourceGuard { service, validator }
+    }
 }
 
 impl<S, V, B> Service<Request<B>> for ResourceGuard<S, V>
 where
     B: 'static,
-    S: Service<Request<B>> + 'static,
-    S::Future: 'static,
-    S::Response: 'static,
-    S::Error: 'static,
-    V: Service<(Request<B>, String), Response = Request<B>> + 'static,
-    V::Future: 'static,
-    V::Response: 'static,
+    S: Service<Request<B>> + Clone + 'static,
+    V: Service<(Request<B>, String), Response = Request<B>>,
     V::Error: 'static,
+    V::Future: 'static,
 {
     type Response = S::Response;
     type Error = GuardError<V::Error, S::Error>;
@@ -72,6 +75,7 @@ where
     }
 
     fn call(&mut self, request: Request<B>) -> Self::Future {
+        // Attempt to extract token string from headers or query string
         let token_str = if let Some(token_str) = request
             .headers()
             .get_all(AUTHORIZATION)
@@ -79,61 +83,46 @@ where
             .find_map(extract_pop_header)
         {
             // Found token string in authorization header
-            token_str
+            token_str.to_string()
         } else if let Some(query_str) = request.uri().query() {
             if let Some(token_str) = query_str.split('&').find_map(extract_pop_query) {
                 // Found token in query string
-                token_str
+                token_str.to_string()
             } else {
+                // Query string but no token
                 return Box::pin(future::err(GuardError::NoAuthData));
             }
         } else {
+            // No token found
             return Box::pin(future::err(GuardError::NoAuthData));
         };
 
-        let fut = self
-            .validation_service
-            .call((request, token_str.to_string()))
-            .map_err(GuardError::TokenValidate)
-            .and_then(|request| self.service.call(request).map_err(GuardError::Service));
+        // Validate
+        let validation_fut = self
+            .validator
+            .call((request, token_str))
+            .map_err(GuardError::TokenValidate);
+
+        // Call service
+        let mut inner_service = self.service.clone();
+        let fut = validation_fut
+            .and_then(move |request| inner_service.call(request).map_err(GuardError::Service));
 
         Box::pin(fut)
     }
 }
 
-// #[async_trait]
-// pub trait ResourceGuardExt: ResourceGuard
-// where
-//     Self::Body: Sync,
-//     Self::Context: Sync + Send,
-// {
-//     /// Proof-of-Payment guard surounding protected resource
-//     #[inline]
-//     async fn guard<'a>(
-//         &mut self,
-//         req: &'a Request<Self::Body>,
-//         context: &mut Self::Context,
-//     ) -> Result<(Self::ValidationResult, &'a str), GuardError<Self::ValidationError>> {
-//         // Search for POP token
-//         let token_str = if let Some(token_str) = req
-//             .headers()
-//             .get_all(AUTHORIZATION)
-//             .iter()
-//             .find_map(extract_pop_header)
-//         {
-//             // Found token string in authorization header
-//             token_str
-//         } else if let Some(query_str) = req.uri().query() {
-//             if let Some(token_str) = query_str.split('&').find_map(extract_pop_query) {
-//                 // Found token in query string
-//                 token_str
-//             } else {
-//                 return Err(GuardError::NoAuthData);
-//             }
-//         } else {
-//             return Err(GuardError::NoAuthData);
-//         };
-//         let result = self.validate_token(token_str, context).await?;
-//         Ok((result, token_str))
-//     }
-// }
+pub struct ValidationLayer<V> {
+    inner: V,
+}
+
+impl<S, V> Layer<S> for ValidationLayer<V>
+where
+    V: Clone,
+{
+    type Service = ResourceGuard<S, V>;
+
+    fn layer(&self, service: S) -> Self::Service {
+        ResourceGuard::new(service, self.inner.clone())
+    }
+}
