@@ -5,12 +5,12 @@ use futures::{
     prelude::*,
     task::{Context, Poll},
 };
-use http::{header::HeaderValue, header::AUTHORIZATION, Request};
+use http::{header::HeaderValue, header::AUTHORIZATION, Request, Response};
 use tower_layer::Layer;
 use tower_service::Service;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GuardError<V, S> {
+pub enum GuardError<S, V> {
     NoAuthData,
     TokenValidate(V),
     Service(S),
@@ -59,7 +59,7 @@ where
     V::Future: 'static,
 {
     type Response = S::Response;
-    type Error = GuardError<V::Error, S::Error>;
+    type Error = GuardError<S::Error, V::Error>;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -114,6 +114,12 @@ where
 
 pub struct ValidationLayer<V> {
     inner: V,
+}
+
+impl<V> ValidationLayer<V> {
+    pub fn new(validator: V) -> Self {
+        ValidationLayer { inner: validator }
+    }
 }
 
 impl<S, V> Layer<S> for ValidationLayer<V>
