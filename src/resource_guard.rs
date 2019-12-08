@@ -5,7 +5,7 @@ use futures::{
     prelude::*,
     task::{Context, Poll},
 };
-use http::{header::HeaderValue, header::AUTHORIZATION, Request, Response};
+use http::{header::HeaderValue, header::AUTHORIZATION, Request};
 use tower_layer::Layer;
 use tower_service::Service;
 
