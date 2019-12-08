@@ -1,13 +1,17 @@
-use std::pin::Pin;
+pub mod token_extractors;
+
+use std::{marker::PhantomData, pin::Pin};
 
 use futures::{
     future,
     prelude::*,
     task::{Context, Poll},
 };
-use http::{header::HeaderValue, header::AUTHORIZATION, Request};
+use http::Request;
 use tower_layer::Layer;
 use tower_service::Service;
+
+use token_extractors::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GuardError<S, V> {
@@ -16,47 +20,31 @@ pub enum GuardError<S, V> {
     Service(S),
 }
 
-/// Extract POP token string from http header value
-fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
-    if let Ok(header_str) = value.to_str() {
-        if &header_str[..4] == "POP " {
-            Some(&header_str[4..])
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-/// Extract POP token string from query string item
-fn extract_pop_query(value: &str) -> Option<&str> {
-    if &value[..5] == "code=" {
-        Some(&value[5..])
-    } else {
-        None
-    }
-}
-
 #[derive(Clone)]
-pub struct ResourceGuard<S, V> {
+pub struct ResourceGuard<S, V, T> {
     service: S,
     validator: V,
+    token_extractor: PhantomData<T>,
 }
 
-impl<S, V> ResourceGuard<S, V> {
+impl<S, V, T> ResourceGuard<S, V, T> {
     fn new(service: S, validator: V) -> Self {
-        ResourceGuard { service, validator }
+        ResourceGuard {
+            service,
+            validator,
+            token_extractor: PhantomData::<T>,
+        }
     }
 }
 
-impl<S, V, B> Service<Request<B>> for ResourceGuard<S, V>
+impl<S, V, T, B> Service<Request<B>> for ResourceGuard<S, V, T>
 where
     B: 'static,
     S: Service<Request<B>> + Clone + 'static,
     V: Service<(Request<B>, String), Response = Request<B>>,
     V::Error: 'static,
     V::Future: 'static,
+    T: TokenExtractor,
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
@@ -76,24 +64,9 @@ where
 
     fn call(&mut self, request: Request<B>) -> Self::Future {
         // Attempt to extract token string from headers or query string
-        let token_str = if let Some(token_str) = request
-            .headers()
-            .get_all(AUTHORIZATION)
-            .iter()
-            .find_map(extract_pop_header)
-        {
-            // Found token string in authorization header
+        let token_str = if let Some(token_str) = T::extract(&request) {
             token_str.to_string()
-        } else if let Some(query_str) = request.uri().query() {
-            if let Some(token_str) = query_str.split('&').find_map(extract_pop_query) {
-                // Found token in query string
-                token_str.to_string()
-            } else {
-                // Query string but no token
-                return Box::pin(future::err(GuardError::NoAuthData));
-            }
         } else {
-            // No token found
             return Box::pin(future::err(GuardError::NoAuthData));
         };
 
@@ -112,23 +85,27 @@ where
     }
 }
 
-pub struct ValidationLayer<V> {
-    inner: V,
+pub struct ValidationLayer<V, T> {
+    validator: V,
+    token_extractor: PhantomData<T>,
 }
 
-impl<V> ValidationLayer<V> {
+impl<V, T> ValidationLayer<V, T> {
     pub fn new(validator: V) -> Self {
-        ValidationLayer { inner: validator }
+        ValidationLayer {
+            validator,
+            token_extractor: PhantomData::<T>,
+        }
     }
 }
 
-impl<S, V> Layer<S> for ValidationLayer<V>
+impl<S, V, T> Layer<S> for ValidationLayer<V, T>
 where
     V: Clone,
 {
-    type Service = ResourceGuard<S, V>;
+    type Service = ResourceGuard<S, V, T>;
 
     fn layer(&self, service: S) -> Self::Service {
-        ResourceGuard::new(service, self.inner.clone())
+        ResourceGuard::new(service, self.validator.clone())
     }
 }
