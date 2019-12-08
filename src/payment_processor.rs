@@ -2,7 +2,6 @@ use std::pin::Pin;
 
 use bytes::BytesMut;
 use futures::{
-    compat::Stream01CompatExt,
     prelude::*,
     task::{Context, Poll},
 };
@@ -69,7 +68,6 @@ impl Service<Request<Body>> for PaymentPreprocessor {
             // Read and parse payment proto
             let (parts, body) = req.into_parts();
             let payment_raw = body
-                .compat()
                 .map_err(PreprocessingError::BodyStream)
                 .try_fold(BytesMut::new(), move |mut body, chunk| {
                     async move {
