@@ -11,7 +11,7 @@ use crate::ResponseFuture;
 pub enum BitcoinError {
     Client(ClientError<HyperError>),
     Transaction,
-    Json(serde_json::Error),
+    Json(JsonError),
 }
 
 pub struct TransactionAcceptor<C> {
