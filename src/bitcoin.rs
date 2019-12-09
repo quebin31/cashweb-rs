@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use async_json_rpc::prelude::{Error as ClientError, *};
 use futures::{
     prelude::*,
@@ -8,10 +6,12 @@ use futures::{
 use hyper::{Body, Error as HyperError, Request as HttpRequest, Response as HttpResponse};
 use tower_service::Service;
 
+use crate::ResponseFuture;
+
 pub enum BitcoinError {
     Client(ClientError<HyperError>),
     Transaction,
-    Bitcoin(serde_json::Error),
+    Json(serde_json::Error),
 }
 
 pub struct TransactionAcceptor<C> {
@@ -36,14 +36,14 @@ impl TransactionAcceptor<HttpTransport> {
     }
 }
 
-impl<C> Service<Vec<u8>> for TransactionAcceptor<C>
+impl<C> Service<&[u8]> for TransactionAcceptor<C>
 where
     C: Service<HttpRequest<Body>, Response = HttpResponse<Body>, Error = HyperError>,
     C::Future: 'static,
 {
     type Response = String;
     type Error = BitcoinError;
-    type Future = Pin<Box<dyn Future<Output = Result<String, Self::Error>>>>;
+    type Future = ResponseFuture<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.json_client
@@ -51,7 +51,7 @@ where
             .map_err(BitcoinError::Client)
     }
 
-    fn call(&mut self, raw_tx: Vec<u8>) -> Self::Future {
+    fn call(&mut self, raw_tx: &[u8]) -> Self::Future {
         let req = self
             .json_client
             .build_request()
@@ -61,13 +61,10 @@ where
             .unwrap();
 
         let fut = self.json_client.call(req).map(|res| match res {
-            Ok(response) => {
-                if response.is_result() {
-                    response.result().unwrap().map_err(BitcoinError::Bitcoin)
-                } else {
-                    Err(BitcoinError::Transaction)
-                }
-            }
+            Ok(response) => response
+                .result()
+                .map(|res| res.map_err(BitcoinError::Json))
+                .unwrap_or(Err(BitcoinError::Transaction)),
             Err(err) => Err(BitcoinError::Client(err)),
         });
 

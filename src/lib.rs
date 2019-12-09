@@ -5,3 +5,8 @@ pub mod models {
 pub mod bitcoin;
 pub mod payment_processor;
 pub mod resource_guard;
+
+use futures::Future;
+use std::pin::Pin;
+
+pub type ResponseFuture<Response, Error> = Pin<Box<dyn Future<Output = Result<Response, Error>>>>;

@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use http::{header::HeaderValue, header::AUTHORIZATION, Request};
 
 /// Extract POP token string from http header value
@@ -24,19 +22,23 @@ pub fn extract_pop_query(value: &str) -> Option<&str> {
     }
 }
 
+#[allow(dead_code)]
 pub struct EitherExtractor<A, B> {
-    extractor_a: PhantomData<A>,
-    extractor_b: PhantomData<B>,
+    extractor_a: A,
+    extractor_b: B,
+}
+
+impl<A, B> EitherExtractor<A, B> {
+    pub fn either(extractor_a: A, extractor_b: B) -> Self {
+        EitherExtractor {
+            extractor_a,
+            extractor_b,
+        }
+    }
 }
 
 pub trait TokenExtractor {
     fn extract<B>(request: &Request<B>) -> Option<&str>;
-    fn either<A: TokenExtractor, B: TokenExtractor>() -> EitherExtractor<A, B> {
-        EitherExtractor {
-            extractor_a: PhantomData::<A>,
-            extractor_b: PhantomData::<B>,
-        }
-    }
 }
 
 impl<X, Y> TokenExtractor for EitherExtractor<X, Y>
@@ -44,6 +46,7 @@ where
     X: TokenExtractor,
     Y: TokenExtractor,
 {
+    #[allow(clippy::or_fun_call)]
     fn extract<B>(request: &Request<B>) -> Option<&str> {
         X::extract(request).or(Y::extract(request))
     }

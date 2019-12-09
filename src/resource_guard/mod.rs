@@ -1,7 +1,5 @@
 pub mod token_extractors;
 
-use std::{marker::PhantomData, pin::Pin};
-
 use futures::{
     future,
     prelude::*,
@@ -11,6 +9,7 @@ use http::Request;
 use tower_layer::Layer;
 use tower_service::Service;
 
+use crate::ResponseFuture;
 use token_extractors::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,15 +23,15 @@ pub enum GuardError<S, V> {
 pub struct ResourceGuard<S, V, T> {
     service: S,
     validator: V,
-    token_extractor: PhantomData<T>,
+    token_extractor: T,
 }
 
 impl<S, V, T> ResourceGuard<S, V, T> {
-    fn new(service: S, validator: V) -> Self {
+    fn new(service: S, validator: V, token_extractor: T) -> Self {
         ResourceGuard {
             service,
             validator,
-            token_extractor: PhantomData::<T>,
+            token_extractor,
         }
     }
 }
@@ -48,7 +47,7 @@ where
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = ResponseFuture<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Poll::Ready(ready) = self.service.poll_ready(cx) {
@@ -87,14 +86,14 @@ where
 
 pub struct ValidationLayer<V, T> {
     validator: V,
-    token_extractor: PhantomData<T>,
+    token_extractor: T,
 }
 
 impl<V, T> ValidationLayer<V, T> {
-    pub fn new(validator: V) -> Self {
+    pub fn new(validator: V, token_extractor: T) -> Self {
         ValidationLayer {
             validator,
-            token_extractor: PhantomData::<T>,
+            token_extractor,
         }
     }
 }
@@ -102,10 +101,11 @@ impl<V, T> ValidationLayer<V, T> {
 impl<S, V, T> Layer<S> for ValidationLayer<V, T>
 where
     V: Clone,
+    T: Copy,
 {
     type Service = ResourceGuard<S, V, T>;
 
     fn layer(&self, service: S) -> Self::Service {
-        ResourceGuard::new(service, self.validator.clone())
+        ResourceGuard::new(service, self.validator.clone(), self.token_extractor)
     }
 }

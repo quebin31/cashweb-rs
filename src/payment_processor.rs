@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use bytes::BytesMut;
 use futures::{
     prelude::*,
@@ -15,8 +13,7 @@ use hyper::{error::Error as HyperError, Body};
 use prost::{DecodeError, Message};
 use tower_service::Service;
 
-use crate::models::Payment;
-
+use crate::{models::Payment, ResponseFuture};
 #[derive(Debug)]
 pub enum PreprocessingError {
     BodyStream(HyperError),
@@ -32,7 +29,7 @@ pub struct PaymentPreprocessor;
 impl Service<Request<Body>> for PaymentPreprocessor {
     type Response = (Parts, Payment);
     type Error = PreprocessingError;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = ResponseFuture<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
