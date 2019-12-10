@@ -4,7 +4,7 @@ pub mod models {
 
 pub mod bitcoin;
 pub mod payment_processor;
-pub mod resource_guard;
+pub mod protection;
 pub mod tokens;
 
 use futures::Future;
