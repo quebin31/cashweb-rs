@@ -14,16 +14,21 @@ use prost::{DecodeError, Message};
 use tower_service::Service;
 
 use crate::{models::Payment, ResponseFuture};
+
+/// The error type of payment preprocessing.
 #[derive(Debug)]
 pub enum PreprocessingError {
+    /// An error occured when streaming the body.
     BodyStream(HyperError),
+    /// Missing the `application/bitcoincash-paymentack` header.
     MissingAcceptHeader,
+    /// Missing the `application/bitcoincash-payment` header.
     MissingContentTypeHeader,
-    MissingTransaction,
-    MissingMerchantData,
+    /// Failed to decode the `Payment` protobuf.
     PaymentDecode(DecodeError),
 }
 
+/// A `Service` that preprocesses the payment HTTP request.
 pub struct PaymentPreprocessor;
 
 impl Service<Request<Body>> for PaymentPreprocessor {

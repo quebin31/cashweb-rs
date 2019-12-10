@@ -8,35 +8,42 @@ use tower_service::Service;
 
 use crate::ResponseFuture;
 
+/// The error type for Bitcoin RPC.
 pub enum BitcoinError {
+    /// A connection error occured.
     Client(ClientError<HyperError>),
-    Transaction,
+    /// Bitcoind produced an JSONRPC error.
+    Rpc(RpcError),
+    /// An error occured while trying to deserialize the response JSON.
     Json(JsonError),
+    /// Bitcoind produced an empty JSON.
+    EmptyJson,
 }
 
-pub struct TransactionAcceptor<C> {
+/// A `Service` that sends raw transactions to Bitcoind.
+pub struct TransactionBroadcaster<C> {
     json_client: HttpClient<C>,
 }
 
-impl TransactionAcceptor<HttpsTransport> {
+impl TransactionBroadcaster<HttpsTransport> {
     /// Creates a new TLS client.
     pub fn new_tls(url: String, user: Option<String>, password: Option<String>) -> Self {
-        TransactionAcceptor {
+        TransactionBroadcaster {
             json_client: HttpClient::new_tls(url, user, password),
         }
     }
 }
 
-impl TransactionAcceptor<HttpTransport> {
+impl TransactionBroadcaster<HttpTransport> {
     /// Creates a new client.
     pub fn new(url: String, user: Option<String>, password: Option<String>) -> Self {
-        TransactionAcceptor {
+        TransactionBroadcaster {
             json_client: HttpClient::new(url, user, password),
         }
     }
 }
 
-impl<C> Service<&[u8]> for TransactionAcceptor<C>
+impl<C> Service<&[u8]> for TransactionBroadcaster<C>
 where
     C: Service<HttpRequest<Body>, Response = HttpResponse<Body>, Error = HyperError>,
     C::Future: 'static,
@@ -64,7 +71,10 @@ where
             Ok(response) => response
                 .result()
                 .map(|res| res.map_err(BitcoinError::Json))
-                .unwrap_or(Err(BitcoinError::Transaction)),
+                .unwrap_or(Err(response
+                    .error()
+                    .map(BitcoinError::Rpc)
+                    .unwrap_or(BitcoinError::EmptyJson))),
             Err(err) => Err(BitcoinError::Client(err)),
         });
 

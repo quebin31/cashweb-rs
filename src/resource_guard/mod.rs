@@ -1,4 +1,4 @@
-pub mod token_extractors;
+pub mod catcher;
 
 use futures::{
     future,
@@ -9,34 +9,40 @@ use http::Request;
 use tower_layer::Layer;
 use tower_service::Service;
 
-use crate::ResponseFuture;
-use token_extractors::*;
+use crate::{tokens::extractors::TokenExtractor, ResponseFuture};
 
+/// The error type for access attempts to protected resources.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GuardError<S, V> {
+    /// No authorization token was found using the extractor.
     NoAuthData,
+    /// The token failed validation.
     TokenValidate(V),
+    /// An error given by the protected service.
     Service(S),
 }
 
+/// A `Service` that protects the inner `Service` with a token validation.
+///
+/// If the authorization token is not present or the token fails to validate an error is returned.
 #[derive(Clone)]
-pub struct ResourceGuard<S, V, T> {
+pub struct ProtectedService<S, T, V> {
     service: S,
-    validator: V,
     token_extractor: T,
+    validator: V,
 }
 
-impl<S, V, T> ResourceGuard<S, V, T> {
+impl<S, T, V> ProtectedService<S, T, V> {
     fn new(service: S, validator: V, token_extractor: T) -> Self {
-        ResourceGuard {
+        ProtectedService {
             service,
-            validator,
             token_extractor,
+            validator,
         }
     }
 }
 
-impl<S, V, T, B> Service<Request<B>> for ResourceGuard<S, V, T>
+impl<S, T, V, B> Service<Request<B>> for ProtectedService<S, T, V>
 where
     B: 'static,
     S: Service<Request<B>> + Clone + 'static,
@@ -84,28 +90,29 @@ where
     }
 }
 
-pub struct ValidationLayer<V, T> {
-    validator: V,
+/// A `Layer` to wrap services in a `ProtectionService` middleware.
+pub struct ProtectionLayer<T, V> {
     token_extractor: T,
+    validator: V,
 }
 
-impl<V, T> ValidationLayer<V, T> {
+impl<T, V> ProtectionLayer<T, V> {
     pub fn new(validator: V, token_extractor: T) -> Self {
-        ValidationLayer {
-            validator,
+        ProtectionLayer {
             token_extractor,
+            validator,
         }
     }
 }
 
-impl<S, V, T> Layer<S> for ValidationLayer<V, T>
+impl<S, T, V> Layer<S> for ProtectionLayer<T, V>
 where
     V: Clone,
     T: Copy,
 {
-    type Service = ResourceGuard<S, V, T>;
+    type Service = ProtectedService<S, T, V>;
 
     fn layer(&self, service: S) -> Self::Service {
-        ResourceGuard::new(service, self.validator.clone(), self.token_extractor)
+        ProtectedService::new(service, self.validator.clone(), self.token_extractor)
     }
 }

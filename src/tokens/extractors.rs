@@ -1,7 +1,7 @@
 use http::{header::HeaderValue, header::AUTHORIZATION, Request};
 
-/// Extract POP token string from http header value
-pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
+/// Extract token from `Authorization` header.
+fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
     if let Ok(header_str) = value.to_str() {
         if &header_str[..4] == "POP " {
             Some(&header_str[4..])
@@ -13,8 +13,8 @@ pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
     }
 }
 
-/// Extract POP token string from query string item
-pub fn extract_pop_query(value: &str) -> Option<&str> {
+/// Extract token from query string.
+fn extract_pop_query(value: &str) -> Option<&str> {
     if &value[..5] == "code=" {
         Some(&value[5..])
     } else {
@@ -22,6 +22,7 @@ pub fn extract_pop_query(value: &str) -> Option<&str> {
     }
 }
 
+/// Represents the method of extracting a token from a HTTP request using either of two extractors.
 #[allow(dead_code)]
 pub struct EitherExtractor<A, B> {
     extractor_a: A,
@@ -37,7 +38,9 @@ impl<A, B> EitherExtractor<A, B> {
     }
 }
 
+/// Represents a method of extracting a token from a HTTP Request.
 pub trait TokenExtractor {
+    /// Extract a token from a request.
     fn extract<B>(request: &Request<B>) -> Option<&str>;
 }
 
@@ -52,6 +55,7 @@ where
     }
 }
 
+/// The method of extracting the token from a requests `Authorization` header.
 pub struct AuthTokenExtractor;
 
 impl TokenExtractor for AuthTokenExtractor {
@@ -64,6 +68,7 @@ impl TokenExtractor for AuthTokenExtractor {
     }
 }
 
+/// The method of extracting the token from a requests query string.
 pub struct QueryStringTokenExtractor;
 
 impl TokenExtractor for QueryStringTokenExtractor {
