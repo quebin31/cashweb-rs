@@ -1,0 +1,9 @@
+[package]
+name = "cashweb-process"
+version = "0.1.0"
+authors = ["Harry Barber <harrybarber@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+tower-service = "0.3.0"
+hyper = "0.13.0"

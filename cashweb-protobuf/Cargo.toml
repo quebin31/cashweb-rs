@@ -1,0 +1,12 @@
+[package]
+name = "cashweb-protobufs"
+version = "0.1.0"
+authors = ["Harry Barber <harrybarber@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+prost = { git = "https://github.com/LucioFranco/prost/", branch="lucio/update-bytes-0.5" }
+bytes = "0.5.2"
+
+[build-dependencies]
+prost-build = "0.5.0"
