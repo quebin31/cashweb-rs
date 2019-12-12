@@ -6,5 +6,8 @@ edition = "2018"
 
 [dependencies]
 async-json-rpc = { git = "https://github.com/hlb8122/async-json-rpc" }
+hex = "0.4.0"
 hyper = "0.13.0"
+futures-core = "0.3.1"
+futures-util = "0.3.1"
 tower-service = "0.3.0"

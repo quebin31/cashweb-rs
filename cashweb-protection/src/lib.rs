@@ -1,15 +1,17 @@
 pub mod catcher;
 
-use futures::{
-    future,
-    prelude::*,
+use std::pin::Pin;
+
+use futures_core::{
     task::{Context, Poll},
+    Future,
 };
+use futures_util::future::{self, TryFutureExt};
 use http::Request;
 use tower_layer::Layer;
 use tower_service::Service;
 
-use crate::{tokens::extractors::TokenExtractor, ResponseFuture};
+use token::TokenExtractor;
 
 /// The error type for access attempts to protected resources.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +55,7 @@ where
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Poll::Ready(ready) = self.service.poll_ready(cx) {

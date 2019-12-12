@@ -1,12 +1,13 @@
+use std::pin::Pin;
+
 use async_json_rpc::prelude::{Error as ClientError, *};
-use futures::{
-    prelude::*,
+use futures_core::{
     task::{Context, Poll},
+    Future,
 };
+use futures_util::future::FutureExt;
 use hyper::{Body, Error as HyperError, Request as HttpRequest, Response as HttpResponse};
 use tower_service::Service;
-
-use crate::ResponseFuture;
 
 /// The error type for Bitcoin RPC.
 pub enum BitcoinError {
@@ -50,7 +51,7 @@ where
 {
     type Response = String;
     type Error = BitcoinError;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.json_client

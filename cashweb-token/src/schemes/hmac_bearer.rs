@@ -1,13 +1,15 @@
-use ring::hmac;
+use std::pin::Pin;
 
-use futures::{
-    future,
+use futures_core::{
     task::{Context, Poll},
+    Future,
 };
+use futures_util::future;
 use http::request::Parts;
+use ring::hmac;
 use tower_service::Service;
 
-use crate::{models::Payment, ResponseFuture};
+use protobuf::models::Payment;
 
 pub trait PreimageExtractor {
     type Error;
@@ -25,7 +27,7 @@ where
 {
     type Response = String;
     type Error = E::Error;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))

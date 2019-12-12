@@ -5,5 +5,11 @@ authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-tower-service = "0.3.0"
+bytes = "0.5.2"
+http = "0.2.0"
 hyper = "0.13.0"
+futures-core = "0.3.1"
+futures-util = "0.3.1"
+prost = { git = "https://github.com/LucioFranco/prost/", branch="lucio/update-bytes-0.5" }
+protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
+tower-service = "0.3.0"
