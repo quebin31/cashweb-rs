@@ -1,8 +1,5 @@
-use std::pin::Pin;
-
 use bytes::BytesMut;
 use futures::{
-    compat::Stream01CompatExt,
     prelude::*,
     task::{Context, Poll},
 };
@@ -16,24 +13,28 @@ use hyper::{error::Error as HyperError, Body};
 use prost::{DecodeError, Message};
 use tower_service::Service;
 
-use crate::models::Payment;
+use crate::{models::Payment, ResponseFuture};
 
+/// The error type of payment preprocessing.
 #[derive(Debug)]
 pub enum PreprocessingError {
+    /// An error occured when streaming the body.
     BodyStream(HyperError),
+    /// Missing the `application/bitcoincash-paymentack` header.
     MissingAcceptHeader,
+    /// Missing the `application/bitcoincash-payment` header.
     MissingContentTypeHeader,
-    MissingTransaction,
-    MissingMerchantData,
+    /// Failed to decode the `Payment` protobuf.
     PaymentDecode(DecodeError),
 }
 
+/// A `Service` that preprocesses the payment HTTP request.
 pub struct PaymentPreprocessor;
 
 impl Service<Request<Body>> for PaymentPreprocessor {
     type Response = (Parts, Payment);
     type Error = PreprocessingError;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = ResponseFuture<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -69,7 +70,6 @@ impl Service<Request<Body>> for PaymentPreprocessor {
             // Read and parse payment proto
             let (parts, body) = req.into_parts();
             let payment_raw = body
-                .compat()
                 .map_err(PreprocessingError::BodyStream)
                 .try_fold(BytesMut::new(), move |mut body, chunk| {
                     async move {

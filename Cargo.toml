@@ -1,17 +1,20 @@
 [package]
-name = "tower-pop"
+name = "tower-pop-token"
 version = "0.1.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-http = "0.1"
-hyper = "0.12"
-prost = "0.5"
-bytes = "0.4"
-futures = { version = "0.3", features = ["compat"] }
-tower-service = "0.3"
-tower-layer = "0.3"
+hex = "0.4.0"
+http = "0.2.0"
+hyper = "0.13.0"
+prost = { git = "https://github.com/LucioFranco/prost/", branch="lucio/update-bytes-0.5" }
+bytes = "0.5.2"
+futures = { version = "0.3.1", features = ["compat"] }
+tower-service = "0.3.0"
+tower-layer = "0.3.0"
+
+async-json-rpc = { git = "https://github.com/hlb8122/async-json-rpc" }
 
 [build-dependencies]
 prost-build = "0.5.0"
