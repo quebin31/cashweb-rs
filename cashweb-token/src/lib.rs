@@ -1,3 +1,5 @@
+pub mod schemes;
+
 use http::{header::HeaderValue, header::AUTHORIZATION, Request};
 
 /// Extract token from `Authorization` header.

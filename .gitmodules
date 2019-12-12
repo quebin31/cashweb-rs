@@ -1,0 +1,3 @@
+[submodule "cashweb-protobuf/src/proto"]
+	path = cashweb-protobuf/src/proto
+	url = https://github.com/cashweb/pop-proto

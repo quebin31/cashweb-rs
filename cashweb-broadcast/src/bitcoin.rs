@@ -1,12 +1,13 @@
+use std::pin::Pin;
+
 use async_json_rpc::prelude::{Error as ClientError, *};
-use futures::{
-    prelude::*,
+use futures_core::{
     task::{Context, Poll},
+    Future,
 };
+use futures_util::future::FutureExt;
 use hyper::{Body, Error as HyperError, Request as HttpRequest, Response as HttpResponse};
 use tower_service::Service;
-
-use crate::ResponseFuture;
 
 /// The error type for Bitcoin RPC.
 pub enum BitcoinError {
@@ -21,36 +22,36 @@ pub enum BitcoinError {
 }
 
 /// A `Service` that sends raw transactions to Bitcoind.
-pub struct TransactionBroadcaster<C> {
+pub struct BitcoinBroadcaster<C> {
     json_client: HttpClient<C>,
 }
 
-impl TransactionBroadcaster<HttpsTransport> {
+impl BitcoinBroadcaster<HttpsTransport> {
     /// Creates a new TLS client.
     pub fn new_tls(url: String, user: Option<String>, password: Option<String>) -> Self {
-        TransactionBroadcaster {
+        BitcoinBroadcaster {
             json_client: HttpClient::new_tls(url, user, password),
         }
     }
 }
 
-impl TransactionBroadcaster<HttpTransport> {
+impl BitcoinBroadcaster<HttpTransport> {
     /// Creates a new client.
     pub fn new(url: String, user: Option<String>, password: Option<String>) -> Self {
-        TransactionBroadcaster {
+        BitcoinBroadcaster {
             json_client: HttpClient::new(url, user, password),
         }
     }
 }
 
-impl<C> Service<&[u8]> for TransactionBroadcaster<C>
+impl<C> Service<&[u8]> for BitcoinBroadcaster<C>
 where
     C: Service<HttpRequest<Body>, Response = HttpResponse<Body>, Error = HyperError>,
     C::Future: 'static,
 {
     type Response = String;
     type Error = BitcoinError;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.json_client

@@ -1,17 +1,17 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, pin::Pin};
 
 use super::{GuardError, ProtectedService};
 
-use futures::{
-    future,
-    prelude::*,
+use futures_core::{
     task::{Context, Poll},
+    Future,
 };
+use futures_util::future::{self, TryFutureExt};
 use http::{Request, Response};
 use tower_layer::Layer;
 use tower_service::Service;
 
-use crate::{tokens::extractors::TokenExtractor, ResponseFuture};
+use token::TokenExtractor;
 
 /// A `Service` that catches `GuardError`s emitted by a `ProtectedService`.
 pub struct ProtectedCatcher<S, T, V, C> {
@@ -42,7 +42,7 @@ where
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
@@ -102,7 +102,7 @@ where
 {
     type Response = Response<B>;
     type Error = GuardError<S, V>;
-    type Future = ResponseFuture<Self::Response, Self::Error>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
