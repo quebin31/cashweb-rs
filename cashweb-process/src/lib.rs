@@ -16,7 +16,7 @@ use hyper::{error::Error as HyperError, Body};
 use prost::{DecodeError, Message};
 use tower_service::Service;
 
-use protobuf::models::Payment;
+use protobuf::bip70::Payment;
 
 /// The error type of payment preprocessing.
 #[derive(Debug)]

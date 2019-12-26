@@ -9,7 +9,7 @@ use http::request::Parts;
 use ring::hmac;
 use tower_service::Service;
 
-use protobuf::models::Payment;
+use protobuf::bip70::Payment;
 
 pub trait PreimageExtractor {
     type Error;
