@@ -1,5 +1,3 @@
-pub mod catcher;
-
 use std::pin::Pin;
 
 use futures_core::{
@@ -7,7 +5,7 @@ use futures_core::{
     Future,
 };
 use futures_util::future::{self, TryFutureExt};
-use http::Request;
+use http::HeaderMap;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -39,13 +37,23 @@ impl<S, V> ProtectedService<S, V> {
     }
 }
 
-impl<S, V, B> Service<Request<B>> for ProtectedService<S, V>
+pub trait ProtectionRequest {
+    type ValidationRequest;
+    type ValidationResponse;
+    type InnerRequest;
+
+    fn headers(&self) -> &HeaderMap;
+    fn validation_request(&self, token_str: &str) -> Self::ValidationRequest;
+    fn inner_request(self, validation_response: Self::ValidationResponse) -> Self::InnerRequest;
+}
+
+impl<S, V, PR: ProtectionRequest> Service<PR> for ProtectedService<S, V>
 where
-    B: 'static,
-    S: Service<Request<B>> + Clone + 'static,
-    V: Service<(Request<B>, String), Response = Request<B>>,
+    S: Service<PR::InnerRequest> + Clone + 'static,
+    V: Service<PR::ValidationRequest, Response = PR::ValidationResponse>,
     V::Error: 'static,
     V::Future: 'static,
+    PR: 'static,
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
@@ -63,25 +71,33 @@ where
         }
     }
 
-    fn call(&mut self, request: Request<B>) -> Self::Future {
+    fn call(&mut self, request: PR) -> Self::Future {
         // Attempt to extract token string from headers or query string
         let headers = request.headers();
         let token_str = if let Some(token_str) = extract_pop(headers) {
-            token_str.to_string()
+            token_str
         } else {
             return Box::pin(future::err(GuardError::NoAuthData));
         };
 
         // Validate
+        let validation_request = request.validation_request(token_str);
         let validation_fut = self
             .validator
-            .call((request, token_str))
+            .call(validation_request)
             .map_err(GuardError::TokenValidate);
 
         // Call service
         let mut inner_service = self.service.clone();
-        let fut = validation_fut
-            .and_then(move |request| inner_service.call(request).map_err(GuardError::Service));
+
+        let fut = async move {
+            let validation_resp = validation_fut.await?;
+            let inner_request = request.inner_request(validation_resp);
+            inner_service
+                .call(inner_request)
+                .map_err(GuardError::Service)
+                .await
+        };
 
         Box::pin(fut)
     }
