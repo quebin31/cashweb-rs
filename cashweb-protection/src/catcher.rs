@@ -11,21 +11,19 @@ use http::{Request, Response};
 use tower_layer::Layer;
 use tower_service::Service;
 
-use token::TokenExtractor;
-
 /// A `Service` that catches `GuardError`s emitted by a `ProtectedService`.
-pub struct ProtectedCatcher<S, T, V, C> {
-    service: ProtectedService<S, T, V>,
+pub struct ProtectedCatcher<S, V, C> {
+    service: ProtectedService<S, V>,
     catcher: C,
 }
 
-impl<S, T, V, C> ProtectedCatcher<S, T, V, C> {
-    pub fn new(service: ProtectedService<S, T, V>, catcher: C) -> Self {
+impl<S, V, C> ProtectedCatcher<S, V, C> {
+    pub fn new(service: ProtectedService<S, V>, catcher: C) -> Self {
         ProtectedCatcher { service, catcher }
     }
 }
 
-impl<S, T, V, C, B> Service<Request<B>> for ProtectedCatcher<S, T, V, C>
+impl<S, V, C, B> Service<Request<B>> for ProtectedCatcher<S, V, C>
 where
     B: 'static,
     S: Service<Request<B>> + Clone + 'static,
@@ -38,7 +36,6 @@ where
             Error = GuardError<S::Error, V::Error>,
         > + Clone
         + 'static,
-    T: TokenExtractor,
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
@@ -63,13 +60,13 @@ pub struct ProtectedCatcherLayer<C> {
     catcher: C,
 }
 
-impl<S, T, V, C> Layer<ProtectedService<S, T, V>> for ProtectedCatcherLayer<C>
+impl<S, V, C> Layer<ProtectedService<S, V>> for ProtectedCatcherLayer<C>
 where
     C: Clone,
 {
-    type Service = ProtectedCatcher<S, T, V, C>;
+    type Service = ProtectedCatcher<S, V, C>;
 
-    fn layer(&self, service: ProtectedService<S, T, V>) -> Self::Service {
+    fn layer(&self, service: ProtectedService<S, V>) -> Self::Service {
         ProtectedCatcher::new(service, self.catcher.clone())
     }
 }

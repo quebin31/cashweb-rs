@@ -21,6 +21,11 @@ pub struct HmacTokenGenerator<E> {
     extractor: E,
 }
 
+pub struct TokenGenerationRequest {
+    parts: Parts,
+    payment: Payment,
+}
+
 impl<E: PreimageExtractor> Service<(&Parts, &Payment)> for HmacTokenGenerator<E>
 where
     E::Error: 'static,
