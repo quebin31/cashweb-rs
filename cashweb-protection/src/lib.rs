@@ -1,5 +1,3 @@
-pub mod catcher;
-
 use std::pin::Pin;
 
 use futures_core::{
@@ -7,11 +5,11 @@ use futures_core::{
     Future,
 };
 use futures_util::future::{self, TryFutureExt};
-use http::Request;
+use http::HeaderMap;
 use tower_layer::Layer;
 use tower_service::Service;
 
-use token::TokenExtractor;
+use token::extract_pop;
 
 /// The error type for access attempts to protected resources.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,30 +26,34 @@ pub enum GuardError<S, V> {
 ///
 /// If the authorization token is not present or the token fails to validate an error is returned.
 #[derive(Clone)]
-pub struct ProtectedService<S, T, V> {
+pub struct ProtectedService<S, V> {
     service: S,
-    token_extractor: T,
     validator: V,
 }
 
-impl<S, T, V> ProtectedService<S, T, V> {
-    fn new(service: S, validator: V, token_extractor: T) -> Self {
-        ProtectedService {
-            service,
-            token_extractor,
-            validator,
-        }
+impl<S, V> ProtectedService<S, V> {
+    fn new(service: S, validator: V) -> Self {
+        ProtectedService { service, validator }
     }
 }
 
-impl<S, T, V, B> Service<Request<B>> for ProtectedService<S, T, V>
+pub trait ProtectionRequest {
+    type ValidationRequest;
+    type ValidationResponse;
+    type InnerRequest;
+
+    fn headers(&self) -> &HeaderMap;
+    fn validation_request(&self, token_str: &str) -> Self::ValidationRequest;
+    fn inner_request(self, validation_response: Self::ValidationResponse) -> Self::InnerRequest;
+}
+
+impl<S, V, PR: ProtectionRequest> Service<PR> for ProtectedService<S, V>
 where
-    B: 'static,
-    S: Service<Request<B>> + Clone + 'static,
-    V: Service<(Request<B>, String), Response = Request<B>>,
+    S: Service<PR::InnerRequest> + Clone + 'static,
+    V: Service<PR::ValidationRequest, Response = PR::ValidationResponse>,
     V::Error: 'static,
     V::Future: 'static,
-    T: TokenExtractor,
+    PR: 'static,
 {
     type Response = S::Response;
     type Error = GuardError<S::Error, V::Error>;
@@ -69,52 +71,56 @@ where
         }
     }
 
-    fn call(&mut self, request: Request<B>) -> Self::Future {
+    fn call(&mut self, request: PR) -> Self::Future {
         // Attempt to extract token string from headers or query string
-        let token_str = if let Some(token_str) = T::extract(&request) {
-            token_str.to_string()
+        let headers = request.headers();
+        let token_str = if let Some(token_str) = extract_pop(headers) {
+            token_str
         } else {
             return Box::pin(future::err(GuardError::NoAuthData));
         };
 
         // Validate
+        let validation_request = request.validation_request(token_str);
         let validation_fut = self
             .validator
-            .call((request, token_str))
+            .call(validation_request)
             .map_err(GuardError::TokenValidate);
 
         // Call service
         let mut inner_service = self.service.clone();
-        let fut = validation_fut
-            .and_then(move |request| inner_service.call(request).map_err(GuardError::Service));
+
+        let fut = async move {
+            let validation_resp = validation_fut.await?;
+            let inner_request = request.inner_request(validation_resp);
+            inner_service
+                .call(inner_request)
+                .map_err(GuardError::Service)
+                .await
+        };
 
         Box::pin(fut)
     }
 }
 
 /// A `Layer` to wrap services in a `ProtectionService` middleware.
-pub struct ProtectionLayer<T, V> {
-    token_extractor: T,
+pub struct ProtectionLayer<V> {
     validator: V,
 }
 
-impl<T, V> ProtectionLayer<T, V> {
-    pub fn new(validator: V, token_extractor: T) -> Self {
-        ProtectionLayer {
-            token_extractor,
-            validator,
-        }
+impl<V> ProtectionLayer<V> {
+    pub fn new(validator: V) -> Self {
+        ProtectionLayer { validator }
     }
 }
 
-impl<S, T, V> Layer<S> for ProtectionLayer<T, V>
+impl<S, V> Layer<S> for ProtectionLayer<V>
 where
     V: Clone,
-    T: Copy,
 {
-    type Service = ProtectedService<S, T, V>;
+    type Service = ProtectedService<S, V>;
 
     fn layer(&self, service: S) -> Self::Service {
-        ProtectedService::new(service, self.validator.clone(), self.token_extractor)
+        ProtectedService::new(service, self.validator.clone())
     }
 }
