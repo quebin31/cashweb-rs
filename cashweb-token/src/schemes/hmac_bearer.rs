@@ -26,7 +26,7 @@ pub struct TokenGenerationRequest {
     payment: Payment,
 }
 
-impl<E: PreimageExtractor> Service<(&Parts, &Payment)> for HmacTokenGenerator<E>
+impl<E: PreimageExtractor> Service<&TokenGenerationRequest> for HmacTokenGenerator<E>
 where
     E::Error: 'static,
 {
@@ -38,9 +38,9 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, (parts, payment): (&Parts, &Payment)) -> Self::Future {
+    fn call(&mut self, request: &TokenGenerationRequest) -> Self::Future {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        let preimage = match self.extractor.extract(parts, payment) {
+        let preimage = match self.extractor.extract(&request.parts, &request.payment) {
             Ok(ok) => ok,
             Err(err) => return Box::pin(future::err(err)),
         };
