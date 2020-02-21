@@ -1,0 +1,11 @@
+[package]
+name = "cashweb"
+version = "0.1.0"
+authors = ["Harry Barber <harrybarber@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+process = { package = "cashweb-process", path = "../cashweb-process" }
+protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
+protection = { package = "cashweb-protection", path = "../cashweb-protection" }
+token = { package = "cashweb-token", path = "../cashweb-token" }

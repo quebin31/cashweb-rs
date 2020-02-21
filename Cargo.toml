@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "cashweb",
     "cashweb-token",
     "cashweb-protection",
     "cashweb-protobuf",
