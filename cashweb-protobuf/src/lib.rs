@@ -1,5 +1,5 @@
 pub mod address_metadata {
-    include!(concat!(env!("OUT_DIR"), "/addressmetadata.rs"));
+    include!(concat!(env!("OUT_DIR"), "/address_metadata.rs"));
 }
 
 pub mod bip70 {
