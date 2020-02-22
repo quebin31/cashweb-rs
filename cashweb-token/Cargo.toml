@@ -6,8 +6,6 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.11.0"
-futures-core = "0.3.4"
-futures-util = "0.3.4"
 http = "0.2.0"
 ring = "0.16.11"
 

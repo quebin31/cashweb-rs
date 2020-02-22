@@ -1,21 +1,18 @@
 pub mod schemes;
 
-use http::{
-    header::{HeaderMap, HeaderValue, AUTHORIZATION},
-    request::Parts,
-};
+use http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use protobuf::bip70::Payment;
 
 pub trait PreimageExtractor {
     type Error;
 
-    fn extract(&self, parts: &Parts, merchant_data: &Payment) -> Result<&[u8], Self::Error>;
+    fn extract(&self, payment: &Payment) -> Result<&[u8], Self::Error>;
 }
 
 pub trait TokenGenerator {
     type Error;
 
-    fn construct_token(&self, parts: &Parts, payment: &Payment) -> Result<String, Self::Error>;
+    fn construct_token(&self, payment: &Payment) -> Result<String, Self::Error>;
 }
 
 /// Extract POP token from `Authorization` header.
