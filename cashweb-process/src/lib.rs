@@ -22,7 +22,7 @@ pub enum PreprocessingError {
 }
 
 pub async fn preprocess_payment(
-    headers: &HeaderMap,
+    headers: HeaderMap,
     body: Bytes,
 ) -> Result<Payment, PreprocessingError> {
     // Bitcoin Cash Headers
