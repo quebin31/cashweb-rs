@@ -1,3 +1,5 @@
+pub mod wallet;
+
 use bytes::Bytes;
 use http::{
     header::{HeaderMap, HeaderValue},

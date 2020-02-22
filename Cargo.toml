@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "cashweb",
-    "cashweb-token",
+    "cashweb-payments",
     "cashweb-protection",
     "cashweb-protobuf",
-    "cashweb-process"
+    "cashweb-token"
 ]

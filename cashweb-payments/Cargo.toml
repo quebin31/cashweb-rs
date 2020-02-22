@@ -1,12 +1,15 @@
 [package]
-name = "cashweb-process"
+name = "cashweb-payments"
 version = "0.1.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
 bytes = "0.5.4"
+bitcoin = "0.23.0"
+dashmap = "3.5.0"
 http = "0.2.0"
 hyper = "0.13.2"
 prost = "0.6.1"
 protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
+tokio = { version = "0.2.11", features = ["time"] }
