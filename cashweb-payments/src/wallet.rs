@@ -30,18 +30,24 @@ where
         }
     }
 
-    pub async fn add_outputs<F: std::future::Future<Output = ()>>(&self, key: K, outputs: Vec<O>) {
-        // Remove from pending map after timeout
+    pub fn add_outputs<F: std::future::Future<Output = ()>>(
+        &self,
+        key: K,
+        outputs: Vec<O>,
+    ) -> impl std::future::Future<Output = ()> {
         // TODO: Check whether pre-existing?
-
         let key_inner = key.clone();
-
         self.pending.insert(key, outputs);
 
         let pending_inner = self.pending.clone();
         let timeout_inner = self.timeout;
-        delay_for(timeout_inner).await;
-        pending_inner.remove(&key_inner);
+
+        // Remove from pending map after timeout
+        let cleanup = async move {
+            delay_for(timeout_inner).await;
+            pending_inner.remove(&key_inner);
+        };
+        cleanup
     }
 
     pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
