@@ -7,5 +7,4 @@ edition = "2018"
 [dependencies]
 payments = { package = "cashweb-payments", path = "../cashweb-payments" }
 protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
-protection = { package = "cashweb-protection", path = "../cashweb-protection" }
 token = { package = "cashweb-token", path = "../cashweb-token" }

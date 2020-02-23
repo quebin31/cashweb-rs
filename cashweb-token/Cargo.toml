@@ -5,6 +5,7 @@ authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1.24"
 base64 = "0.11.0"
 http = "0.2.0"
 ring = "0.16.11"

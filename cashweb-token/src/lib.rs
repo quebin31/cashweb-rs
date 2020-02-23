@@ -1,18 +1,22 @@
 pub mod schemes;
 
+use async_trait::async_trait;
 use http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use protobuf::bip70::Payment;
 
-pub trait PreimageExtractor {
+#[async_trait]
+pub trait TokenValidator {
+    type Data;
     type Error;
 
-    fn extract(&self, payment: &Payment) -> Result<&[u8], Self::Error>;
+    async fn validate_token(&self, data: Self::Data, token: &str) -> Result<(), Self::Error>;
 }
 
 pub trait TokenGenerator {
+    type Data;
     type Error;
 
-    fn construct_token(&self, payment: &Payment) -> Result<String, Self::Error>;
+    fn construct_token(&self, data: Self::Data) -> Result<String, Self::Error>;
 }
 
 /// Extract POP token from `Authorization` header.

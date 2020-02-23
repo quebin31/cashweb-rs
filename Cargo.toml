@@ -2,7 +2,6 @@
 members = [
     "cashweb",
     "cashweb-payments",
-    "cashweb-protection",
     "cashweb-protobuf",
     "cashweb-token"
 ]
