@@ -2,7 +2,6 @@ pub mod schemes;
 
 use async_trait::async_trait;
 use http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use protobuf::bip70::Payment;
 
 #[async_trait]
 pub trait TokenValidator {

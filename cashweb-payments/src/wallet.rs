@@ -3,8 +3,6 @@ use std::{sync::Arc, time::Duration};
 use dashmap::DashMap;
 use tokio::time::delay_for;
 
-use protobuf::bip70::Payment;
-
 #[derive(Debug)]
 pub enum WalletError {
     NotFound,

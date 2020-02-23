@@ -3,7 +3,6 @@ use ring::hmac;
 use crate::*;
 
 use async_trait::async_trait;
-use protobuf::bip70::Payment;
 
 pub struct HmacTokenScheme {
     key: hmac::Key,
