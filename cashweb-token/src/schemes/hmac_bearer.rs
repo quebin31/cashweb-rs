@@ -8,6 +8,13 @@ pub struct HmacTokenScheme {
     key: hmac::Key,
 }
 
+impl HmacTokenScheme {
+    pub fn new(key: &[u8]) -> Self {
+        let key = hmac::Key::new(hmac::HMAC_SHA256, key);
+        Self { key }
+    }
+}
+
 impl TokenGenerator for HmacTokenScheme {
     type Data = Vec<u8>;
     type Error = ();
