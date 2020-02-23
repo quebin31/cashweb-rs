@@ -1,9 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use bitcoin::{
-    consensus::encode::Error as BitcoinError, util::psbt::serialize::Deserialize, Transaction,
-    TxOut,
-};
 use dashmap::DashMap;
 use tokio::time::delay_for;
 
@@ -12,19 +8,19 @@ use protobuf::bip70::Payment;
 pub enum WalletError {
     NotFound,
     IncorrectAmount,
-    MalformedTx(BitcoinError),
 }
 
 #[derive(Clone)]
-pub struct Wallet<K> {
+pub struct Wallet<K, O> {
     timeout: Duration,
-    pending: Arc<DashMap<K, Vec<TxOut>>>, // script:amount
+    pending: Arc<DashMap<K, Vec<O>>>, // script:amount
 }
 
-impl<K> Wallet<K>
+impl<K, O> Wallet<K, O>
 where
     K: std::hash::Hash + std::cmp::Eq,
     K: Clone + Send + Sync + 'static,
+    O: std::cmp::PartialEq,
 {
     pub fn new(timeout: Duration) -> Self {
         Wallet {
@@ -33,22 +29,21 @@ where
         }
     }
 
-    pub fn add_outputs(&self, key: K, outputs: Vec<TxOut>) {
+    pub async fn add_outputs<F: std::future::Future<Output = ()>>(&self, key: K, outputs: Vec<O>) {
         // Remove from pending map after timeout
         // TODO: Check whether pre-existing?
 
         let key_inner = key.clone();
+
+        self.pending.insert(key, outputs);
+
         let pending_inner = self.pending.clone();
         let timeout_inner = self.timeout;
-        let cleanup = async move {
-            delay_for(timeout_inner).await;
-            pending_inner.remove(&key_inner);
-        };
-        self.pending.insert(key, outputs);
-        tokio::spawn(cleanup);
+        delay_for(timeout_inner).await;
+        pending_inner.remove(&key_inner);
     }
 
-    pub fn recv_outputs(&self, key: &K, outputs: &[TxOut]) -> Result<(), WalletError> {
+    pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
         // TODO: Use conditional remove here
         let expected_outputs = self.pending.get(key).ok_or(WalletError::NotFound)?;
         if outputs
@@ -60,21 +55,5 @@ where
         } else {
             Err(WalletError::IncorrectAmount)
         }
-    }
-
-    pub fn process_payment(&self, key: &K, payment: &Payment) -> Result<(), WalletError>
-    where
-        K: std::hash::Hash + std::cmp::Eq,
-        K: Clone + Send + Sync + 'static,
-    {
-        let txs_res: Result<Vec<Transaction>, BitcoinError> = payment
-            .transactions
-            .iter()
-            .map(|raw_tx| Transaction::deserialize(raw_tx))
-            .collect();
-        let txs = txs_res.map_err(WalletError::MalformedTx)?;
-        let outputs: Vec<TxOut> = txs.into_iter().map(move |tx| tx.output).flatten().collect();
-
-        self.recv_outputs(key, &outputs)
     }
 }
