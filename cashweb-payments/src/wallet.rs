@@ -5,6 +5,7 @@ use tokio::time::delay_for;
 
 use protobuf::bip70::Payment;
 
+#[derive(Debug)]
 pub enum WalletError {
     NotFound,
     IncorrectAmount,
