@@ -33,7 +33,7 @@ pub enum ValidationError {
 
 #[async_trait]
 impl TokenValidator for HmacTokenScheme {
-    type Data = Vec<u8>;
+    type Data = Vec<u8>; // TODO: Fix this once async traits are stable
     type Error = ValidationError;
 
     async fn validate_token(&self, data: Self::Data, token: &str) -> Result<(), Self::Error> {
