@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
 use tokio::time::delay_for;
@@ -6,7 +6,17 @@ use tokio::time::delay_for;
 #[derive(Debug)]
 pub enum WalletError {
     NotFound,
-    IncorrectAmount,
+    InvalidOutputs,
+}
+
+impl fmt::Display for WalletError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let printable = match self {
+            Self::NotFound => "pending payment not found or expired",
+            Self::InvalidOutputs => "invalid outputs",
+        };
+        f.write_str(printable)
+    }
 }
 
 #[derive(Clone)]
@@ -58,7 +68,7 @@ where
             self.pending.remove(key);
             Ok(())
         } else {
-            Err(WalletError::IncorrectAmount)
+            Err(WalletError::InvalidOutputs)
         }
     }
 }

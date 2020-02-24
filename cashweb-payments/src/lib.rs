@@ -1,11 +1,12 @@
 pub mod wallet;
 
+use std::fmt;
+
 use bytes::Bytes;
 use http::{
     header::{HeaderMap, HeaderValue},
     header::{ACCEPT, CONTENT_TYPE},
 };
-use hyper::error::Error as HyperError;
 use prost::{DecodeError, Message};
 
 use protobuf::bip70::Payment;
@@ -13,14 +14,23 @@ use protobuf::bip70::Payment;
 /// The error type of payment preprocessing.
 #[derive(Debug)]
 pub enum PreprocessingError {
-    /// An error occurred when streaming the body.
-    BodyStream(HyperError),
     /// Missing the `application/bitcoincash-paymentack` header.
     MissingAcceptHeader,
     /// Missing the `application/bitcoincash-payment` header.
     MissingContentTypeHeader,
     /// Failed to decode the `Payment` protobuf.
     PaymentDecode(DecodeError),
+}
+
+impl fmt::Display for PreprocessingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let printable = match self {
+            Self::MissingAcceptHeader => "not acceptable",
+            Self::MissingContentTypeHeader => "invalid content-type",
+            Self::PaymentDecode(err) => return err.fmt(f),
+        };
+        f.write_str(printable)
+    }
 }
 
 pub async fn preprocess_payment(
