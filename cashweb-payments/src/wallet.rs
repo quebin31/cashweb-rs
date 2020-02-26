@@ -25,6 +25,14 @@ pub struct Wallet<K, O> {
     pending: Arc<DashMap<K, Vec<O>>>, // script:amount
 }
 
+// NOTE: CHALK will remove the need for this manual impl
+impl <K: fmt::Debug + std::cmp::Eq, O: fmt::Debug> fmt::Debug for Wallet<K, O>
+where K: fmt::Debug + std::cmp::Eq + std::hash::Hash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Wallet {{\n\ttimeout: {:?},\n\tpending: {:?}\n}}", self.timeout, self.pending)
+    }
+}
+
 impl<K, O> Wallet<K, O>
 where
     K: std::hash::Hash + std::cmp::Eq,
