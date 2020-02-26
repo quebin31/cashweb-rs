@@ -1,8 +1,10 @@
+use std::fmt;
+
 use ring::hmac;
+use async_trait::async_trait;
 
 use crate::*;
 
-use async_trait::async_trait;
 
 pub struct HmacTokenScheme {
     key: hmac::Key,
@@ -30,6 +32,15 @@ impl TokenGenerator for HmacTokenScheme {
 pub enum ValidationError {
     Base64(base64::DecodeError),
     Invalid,
+}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Base64(err) => return err.fmt(f),
+            Self::Invalid => f.write_str("invalid token")
+        }
+    }
 }
 
 #[async_trait]
