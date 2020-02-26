@@ -46,7 +46,7 @@ where
         }
     }
 
-    pub fn add_outputs<F: std::future::Future<Output = ()>>(
+    pub fn add_outputs(
         &self,
         key: K,
         outputs: Vec<O>,
