@@ -26,6 +26,7 @@ impl TokenGenerator for HmacTokenScheme {
     }
 }
 
+#[derive(Debug)]
 pub enum ValidationError {
     Base64(base64::DecodeError),
     Invalid,
