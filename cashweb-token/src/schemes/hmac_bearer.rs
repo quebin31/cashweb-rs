@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use crate::*;
 
-
+#[derive(Debug)]
 pub struct HmacTokenScheme {
     key: hmac::Key,
 }
