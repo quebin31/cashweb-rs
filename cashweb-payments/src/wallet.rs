@@ -37,7 +37,7 @@ impl<K, O> Wallet<K, O>
 where
     K: std::hash::Hash + std::cmp::Eq,
     K: Clone + Send + Sync + 'static,
-    O: std::cmp::PartialEq,
+    O: std::cmp::PartialEq + Sync + Send,
 {
     pub fn new(timeout: Duration) -> Self {
         Wallet {
@@ -50,7 +50,7 @@ where
         &self,
         key: K,
         outputs: Vec<O>,
-    ) -> impl std::future::Future<Output = ()> {
+    ) -> impl std::future::Future<Output = ()> + Send {
         // TODO: Check whether pre-existing?
         let key_inner = key.clone();
         self.pending.insert(key, outputs);
