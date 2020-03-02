@@ -21,9 +21,9 @@ impl TokenGenerator for HmacTokenScheme {
     type Data = Vec<u8>;
     type Error = ();
 
-    fn construct_token(&self, data: Self::Data) -> Result<String, Self::Error> {
+    fn construct_token(&self, data: &Self::Data) -> Result<String, Self::Error> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        let tag = hmac::sign(&self.key, &data);
+        let tag = hmac::sign(&self.key, data);
         Ok(base64::encode_config(tag.as_ref(), url_safe_config))
     }
 }
@@ -48,9 +48,9 @@ impl TokenValidator for HmacTokenScheme {
     type Data = Vec<u8>; // TODO: Fix this once async traits are stable
     type Error = ValidationError;
 
-    async fn validate_token(&self, data: Self::Data, token: &str) -> Result<(), Self::Error> {
+    async fn validate_token(&self, data: &Self::Data, token: &str) -> Result<(), Self::Error> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let tag = base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;
-        hmac::verify(&self.key, &data, &tag).map_err(|_| ValidationError::Invalid)
+        hmac::verify(&self.key, data, &tag).map_err(|_| ValidationError::Invalid)
     }
 }
