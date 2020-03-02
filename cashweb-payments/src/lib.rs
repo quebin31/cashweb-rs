@@ -4,8 +4,7 @@ use std::fmt;
 
 use bytes::Bytes;
 use http::{
-    header::{HeaderMap, HeaderValue},
-    header::{ACCEPT, CONTENT_TYPE},
+    header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE},
 };
 use prost::{DecodeError, Message};
 

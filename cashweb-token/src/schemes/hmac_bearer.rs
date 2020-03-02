@@ -24,7 +24,7 @@ impl TokenGenerator for HmacTokenScheme {
     fn construct_token(&self, data: &Self::Data) -> Result<String, Self::Error> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let tag = hmac::sign(&self.key, data);
-        Ok(base64::encode_config(tag.as_ref(), url_safe_config))
+        Ok("POP ".to_string() + &base64::encode_config(tag.as_ref(), url_safe_config))
     }
 }
 
