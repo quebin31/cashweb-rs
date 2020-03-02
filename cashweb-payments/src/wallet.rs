@@ -26,10 +26,16 @@ pub struct Wallet<K, O> {
 }
 
 // NOTE: CHALK will remove the need for this manual impl
-impl <K: fmt::Debug + std::cmp::Eq, O: fmt::Debug> fmt::Debug for Wallet<K, O>
-where K: fmt::Debug + std::cmp::Eq + std::hash::Hash {
+impl<K: fmt::Debug + std::cmp::Eq, O: fmt::Debug> fmt::Debug for Wallet<K, O>
+where
+    K: fmt::Debug + std::cmp::Eq + std::hash::Hash,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Wallet {{\n\ttimeout: {:?},\n\tpending: {:?}\n}}", self.timeout, self.pending)
+        write!(
+            f,
+            "Wallet {{\n\ttimeout: {:?},\n\tpending: {:?}\n}}",
+            self.timeout, self.pending
+        )
     }
 }
 
@@ -59,21 +65,20 @@ where
         let timeout_inner = self.timeout;
 
         // Remove from pending map after timeout
-        let cleanup = async move {
+        async move {
             delay_for(timeout_inner).await;
             pending_inner.remove(&key_inner);
-        };
-        cleanup
+        }
     }
 
     pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
-        // TODO: Use conditional remove here
-        let expected_outputs = self.pending.get(key).ok_or(WalletError::NotFound)?;
-        if outputs
-            .iter()
-            .all(|output| expected_outputs.value().contains(output))
-        {
-            self.pending.remove(key);
+        let check_subset = |_: &K, expected_outputs: &Vec<O>| {
+            expected_outputs
+                .iter()
+                .all(|output| outputs.contains(output))
+        };
+
+        if self.pending.remove_if(key, check_subset).is_some() {
             Ok(())
         } else {
             Err(WalletError::InvalidOutputs)
