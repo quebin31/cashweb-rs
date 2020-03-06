@@ -1,0 +1,9 @@
+[submodule "pop"]
+	path = cashweb-protobuf/src/proto/pop
+	url = https://github.com/cashweb/pop-proto
+[submodule "keyserver"]
+	path = cashweb-protobuf/src/proto/keyserver
+	url = https://github.com/cashweb/keyserver-proto
+[submodule "relay"]
+	path = cashweb-protobuf/src/proto/relay
+	url = https://github.com/cashweb/relay-proto
