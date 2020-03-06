@@ -6,7 +6,7 @@ fn main() {
             "src/proto/keyserver/addressmetadata.proto",
             "src/proto/relay/filters.proto",
             "src/proto/relay/messaging.proto",
-            "src/proto/relay/stealth.proto"
+            "src/proto/relay/stealth.proto",
         ],
         &["src/"],
     )

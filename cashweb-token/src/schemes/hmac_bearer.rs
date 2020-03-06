@@ -1,7 +1,7 @@
 use std::fmt;
 
-use ring::hmac;
 use async_trait::async_trait;
+use ring::hmac;
 
 use crate::*;
 
@@ -38,7 +38,7 @@ impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Base64(err) => return err.fmt(f),
-            Self::Invalid => f.write_str("invalid token")
+            Self::Invalid => f.write_str("invalid token"),
         }
     }
 }

@@ -3,9 +3,7 @@ pub mod wallet;
 use std::fmt;
 
 use bytes::Bytes;
-use http::{
-    header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE},
-};
+use http::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
 use prost::{DecodeError, Message};
 
 use protobuf::bip70::Payment;
