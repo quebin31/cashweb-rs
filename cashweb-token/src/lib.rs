@@ -1,22 +1,6 @@
 pub mod schemes;
 
-use async_trait::async_trait;
 use http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-
-#[async_trait]
-pub trait TokenValidator {
-    type Data;
-    type Error;
-
-    async fn validate_token(&self, data: &Self::Data, token: &str) -> Result<(), Self::Error>;
-}
-
-pub trait TokenGenerator {
-    type Data;
-    type Error;
-
-    fn construct_token(&self, data: &Self::Data) -> Result<String, Self::Error>;
-}
 
 /// Extract POP token from `Authorization` header.
 pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
