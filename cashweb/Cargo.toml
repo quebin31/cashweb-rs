@@ -5,6 +5,7 @@ authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
+bitcoin-client = { package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
 payments = { package = "cashweb-payments", path = "../cashweb-payments" }
 protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
 token = { package = "cashweb-token", path = "../cashweb-token" }
