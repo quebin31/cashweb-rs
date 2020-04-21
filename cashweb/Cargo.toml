@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 homepage = "https://github.com/cashweb/cashweb-rs"
 repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin"]
+description = "A collection of useful cash:web helper libraries."
+categories = ["development-tools"]
 
 [dependencies]
 bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }

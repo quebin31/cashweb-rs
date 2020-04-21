@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 homepage = "https://github.com/cashweb/cashweb-rs"
 repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin", "client"]
+description = "A minimal Bitcoin RPC client."
+categories = ["development-tools"]
 
 [dependencies]
 hex = "0.4.2"

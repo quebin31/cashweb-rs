@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 homepage = "https://github.com/cashweb/cashweb-rs"
 repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "protobuffers", "protobuf"]
+description = "A helper library for the cash:web protobuf messages."
+categories = ["development-tools"]
 
 [dependencies]
 prost = "0.6.1"

@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 homepage = "https://github.com/cashweb/cashweb-rs"
 repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "token"]
+description = "A protobuf library for the cash:web tokens."
+categories = ["development-tools"]
 
 [dependencies]
 bitcoin = "0.23.0"
