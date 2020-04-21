@@ -1,11 +1,14 @@
 [package]
 name = "cashweb"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/cashweb/cashweb-rs"
+repository = "https://github.com/cashweb/cashweb-rs"
 
 [dependencies]
-bitcoin-client = { package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
-payments = { package = "cashweb-payments", path = "../cashweb-payments" }
-protobuf = { package = "cashweb-protobuf", path = "../cashweb-protobuf" }
-token = { package = "cashweb-token", path = "../cashweb-token" }
+bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
+payments = { version = "0.1.0-alpha.0", package = "cashweb-payments", path = "../cashweb-payments" }
+protobuf = { version = "0.1.0-alpha.0", package = "cashweb-protobuf", path = "../cashweb-protobuf" }
+token = { version = "0.1.0-alpha.0", package = "cashweb-token", path = "../cashweb-token" }

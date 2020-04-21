@@ -2,6 +2,7 @@ use std::fmt;
 
 use ring::hmac;
 
+/// Basic HMAC token scheme.
 #[derive(Debug)]
 pub struct HmacScheme {
     key: hmac::Key,
@@ -12,9 +13,8 @@ impl HmacScheme {
         let key = hmac::Key::new(hmac::HMAC_SHA256, key);
         Self { key }
     }
-}
 
-impl HmacScheme {
+    /// Construct a token.
     pub fn construct_token(&self, data: &[u8]) -> String {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let tag = hmac::sign(&self.key, data);
@@ -38,6 +38,7 @@ impl fmt::Display for ValidationError {
 }
 
 impl HmacScheme {
+    /// Validate a token.
     pub async fn validate_token(&self, data: &[u8], token: &str) -> Result<(), ValidationError> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let tag = base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;

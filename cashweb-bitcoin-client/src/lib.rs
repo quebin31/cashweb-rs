@@ -5,6 +5,7 @@ pub use json_rpc::clients::http::HttpConnector;
 use json_rpc::prelude::*;
 use serde_json::Value;
 
+/// Basic bitcoin client
 #[derive(Clone, Debug)]
 pub struct BitcoinClient<C>(HttpClient<C>);
 
@@ -22,6 +23,7 @@ impl<C> std::ops::Deref for BitcoinClient<C> {
     }
 }
 
+/// The error type for the Bitcoin RPC.
 #[derive(Debug)]
 pub enum NodeError {
     Http(HttpError),

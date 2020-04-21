@@ -3,6 +3,7 @@ use std::{fmt, sync::Arc, time::Duration};
 use dashmap::DashMap;
 use tokio::time::delay_for;
 
+/// The error type for the Wallet.
 #[derive(Debug)]
 pub enum WalletError {
     NotFound,
@@ -19,6 +20,7 @@ impl fmt::Display for WalletError {
     }
 }
 
+/// Provides a simple interface to allow parallel caching and retrieval of UTXOs.
 #[derive(Clone)]
 pub struct Wallet<K, O> {
     timeout: Duration,
@@ -52,6 +54,7 @@ where
         }
     }
 
+    /// Synchronously adds outputs to the wallet and returns a delayed Future removing the output.
     pub fn add_outputs(
         &self,
         key: K,
@@ -71,6 +74,7 @@ where
         }
     }
 
+    /// Removes an output an output from the wallet, else raises an error.
     pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
         let check_subset = |_: &K, expected_outputs: &Vec<O>| {
             expected_outputs

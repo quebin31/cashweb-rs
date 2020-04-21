@@ -7,7 +7,8 @@ use bitcoin::{
 use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
 use ring::hmac;
 
-#[derive(Debug)]
+/// Chain commitment scheme used in the keyserver protocol.
+#[derive(Clone, Debug)]
 pub struct ChainCommitmentScheme<C> {
     client: BitcoinClient<C>,
 }
@@ -19,6 +20,7 @@ impl ChainCommitmentScheme<HttpConnector> {
         }
     }
 
+    /// Construct a token.
     pub fn construct_token(&self, pub_key: &[u8], address_metadata: &[u8]) -> String {
         let tag = create_tag(pub_key, address_metadata);
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
@@ -68,6 +70,7 @@ impl fmt::Display for ValidationError {
 const SCRIPT_LEN: usize = 32 + 4;
 
 impl ChainCommitmentScheme<HttpConnector> {
+    /// Validate a token.
     pub async fn validate_token(
         &self,
         pub_key: &[u8],

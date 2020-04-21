@@ -30,6 +30,7 @@ impl fmt::Display for PreprocessingError {
     }
 }
 
+/// Validates and parses the BIP70 payment.
 pub async fn preprocess_payment(
     headers: HeaderMap,
     body: Bytes,
