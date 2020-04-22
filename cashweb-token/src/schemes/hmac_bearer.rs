@@ -37,7 +37,7 @@ impl HmacScheme {
     }
 
     /// Validate a token.
-    pub async fn validate_token(&self, data: &[u8], token: &str) -> Result<(), ValidationError> {
+    pub fn validate_token(&self, data: &[u8], token: &str) -> Result<(), ValidationError> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let tag = base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;
         hmac::verify(&self.key, data, &tag).map_err(|_| ValidationError::Invalid)

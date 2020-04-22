@@ -5,7 +5,7 @@ use bitcoin::{
     Transaction,
 };
 use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
-use ring::hmac;
+use ring::digest::{Context, SHA256};
 
 #[derive(Debug)]
 pub enum ValidationError {
@@ -41,25 +41,31 @@ pub struct ChainCommitmentScheme<C> {
     client: BitcoinClient<C>,
 }
 
-fn create_key(pub_key: &[u8]) -> hmac::Key {
-    hmac::Key::new(hmac::HMAC_SHA256, pub_key)
+const COMMITMENT_LEN: usize = 32;
+
+/// Construct the commitment.
+pub fn construct_commitment(pub_key_hash: &[u8], address_metadata_hash: &[u8]) -> Vec<u8> {
+    let mut sha256_context = Context::new(&SHA256);
+    sha256_context.update(pub_key_hash);
+    sha256_context.update(address_metadata_hash);
+    sha256_context.finish().as_ref().to_vec()
 }
 
-fn create_tag(pub_key: &[u8], address_metadata: &[u8]) -> hmac::Tag {
-    let key = create_key(pub_key);
-    hmac::sign(&key, address_metadata)
+/// Construct the raw token.
+pub fn construct_token_raw(tx_id: &[u8], vout: u32) -> Vec<u8> {
+    [tx_id, &vout.to_le_bytes()[..]].concat()
+}
+
+// Construct the token.
+pub fn construct_token(tx_id: &[u8], vout: u32) -> String {
+    let raw_token = construct_token_raw(tx_id, vout);
+    let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
+    base64::encode_config(raw_token, url_safe_config)
 }
 
 impl<C> ChainCommitmentScheme<C> {
     pub fn from_client(client: BitcoinClient<C>) -> Self {
         ChainCommitmentScheme { client }
-    }
-
-    /// Construct a token.
-    pub fn construct_token(&self, pub_key: &[u8], address_metadata: &[u8]) -> String {
-        let tag = create_tag(pub_key, address_metadata);
-        let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        base64::encode_config(tag.as_ref(), url_safe_config)
     }
 }
 
@@ -73,21 +79,21 @@ impl ChainCommitmentScheme<HttpConnector> {
     /// Validate a token.
     pub async fn validate_token(
         &self,
-        pub_key: &[u8],
-        address_metadata: &[u8],
+        pub_key_hash: &[u8],
+        address_metadata_hash: &[u8],
         token: &str,
     ) -> Result<(), ValidationError> {
-        const SCRIPT_LEN: usize = 32 + 4;
-
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let outpoint_raw =
             base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;
 
-        if outpoint_raw.len() != SCRIPT_LEN {
+        // Check token length
+        const PAYLOAD_LEN: usize = 32 + 4;
+        if outpoint_raw.len() != PAYLOAD_LEN {
             return Err(ValidationError::TokenLength);
         }
 
-        // Get ID
+        // Parse ID
         let tx_id = &outpoint_raw[..32];
 
         // Get transaction
@@ -116,13 +122,16 @@ impl ChainCommitmentScheme<HttpConnector> {
         let raw_script = output.script_pubkey.as_bytes();
 
         // Check length
-        let script_len = raw_script.len();
-        if script_len != 2 + 32 || raw_script[1] != 2 + 32 {
+        if raw_script.len() != 2 + COMMITMENT_LEN || raw_script[1] != 2 + COMMITMENT_LEN as u8 {
             return Err(ValidationError::IncorrectLength);
         }
 
-        let tag = &raw_script[2..34];
-        let key = create_key(pub_key);
-        hmac::verify(&key, address_metadata, &tag).map_err(|_| ValidationError::Invalid)
+        // Check commitment
+        let commitment = &raw_script[2..34];
+        let expected_commitment = construct_commitment(pub_key_hash, address_metadata_hash);
+        if expected_commitment != commitment {
+            return Err(ValidationError::Invalid)
+        }
+        Ok(())
     }
 }

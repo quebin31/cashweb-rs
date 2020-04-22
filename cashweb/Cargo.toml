@@ -1,6 +1,6 @@
 [package]
 name = "cashweb"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -14,4 +14,4 @@ categories = ["development-tools"]
 bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
 payments = { version = "0.1.0-alpha.0", package = "cashweb-payments", path = "../cashweb-payments" }
 protobuf = { version = "0.1.0-alpha.0", package = "cashweb-protobuf", path = "../cashweb-protobuf" }
-token = { version = "0.1.0-alpha.1", package = "cashweb-token", path = "../cashweb-token" }
+token = { version = "0.1.0-alpha.2", package = "cashweb-token", path = "../cashweb-token" }
