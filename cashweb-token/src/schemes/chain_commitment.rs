@@ -7,38 +7,6 @@ use bitcoin::{
 use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
 use ring::hmac;
 
-/// Chain commitment scheme used in the keyserver protocol.
-#[derive(Clone, Debug)]
-pub struct ChainCommitmentScheme<C> {
-    client: BitcoinClient<C>,
-}
-
-impl ChainCommitmentScheme<HttpConnector> {
-    pub fn new(endpoint: String, username: String, password: String) -> Self {
-        Self {
-            client: BitcoinClient::new(endpoint, username, password),
-        }
-    }
-
-    /// Construct a token.
-    pub fn construct_token(&self, pub_key: &[u8], address_metadata: &[u8]) -> String {
-        let tag = create_tag(pub_key, address_metadata);
-        let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        base64::encode_config(tag.as_ref(), url_safe_config)
-    }
-}
-
-fn create_key(pub_key: &[u8]) -> hmac::Key {
-    hmac::Key::new(hmac::HMAC_SHA256, pub_key)
-}
-
-fn create_tag(pub_key: &[u8], address_metadata: &[u8]) -> hmac::Tag {
-    let key = create_key(pub_key);
-    hmac::sign(&key, address_metadata)
-}
-
-impl<C> ChainCommitmentScheme<C> {}
-
 #[derive(Debug)]
 pub enum ValidationError {
     Base64(base64::DecodeError),
@@ -67,9 +35,41 @@ impl fmt::Display for ValidationError {
     }
 }
 
-const SCRIPT_LEN: usize = 32 + 4;
+/// Chain commitment scheme used in the keyserver protocol.
+#[derive(Clone, Debug)]
+pub struct ChainCommitmentScheme<C> {
+    client: BitcoinClient<C>,
+}
+
+fn create_key(pub_key: &[u8]) -> hmac::Key {
+    hmac::Key::new(hmac::HMAC_SHA256, pub_key)
+}
+
+fn create_tag(pub_key: &[u8], address_metadata: &[u8]) -> hmac::Tag {
+    let key = create_key(pub_key);
+    hmac::sign(&key, address_metadata)
+}
+
+impl<C> ChainCommitmentScheme<C> {
+    pub fn from_client(client: BitcoinClient<C>) -> Self {
+        ChainCommitmentScheme { client }
+    }
+
+    /// Construct a token.
+    pub fn construct_token(&self, pub_key: &[u8], address_metadata: &[u8]) -> String {
+        let tag = create_tag(pub_key, address_metadata);
+        let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
+        base64::encode_config(tag.as_ref(), url_safe_config)
+    }
+}
 
 impl ChainCommitmentScheme<HttpConnector> {
+    pub fn new(endpoint: String, username: String, password: String) -> Self {
+        Self {
+            client: BitcoinClient::new(endpoint, username, password),
+        }
+    }
+
     /// Validate a token.
     pub async fn validate_token(
         &self,
@@ -77,6 +77,8 @@ impl ChainCommitmentScheme<HttpConnector> {
         address_metadata: &[u8],
         token: &str,
     ) -> Result<(), ValidationError> {
+        const SCRIPT_LEN: usize = 32 + 4;
+
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let outpoint_raw =
             base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;

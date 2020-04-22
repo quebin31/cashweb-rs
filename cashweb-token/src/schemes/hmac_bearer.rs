@@ -2,6 +2,21 @@ use std::fmt;
 
 use ring::hmac;
 
+#[derive(Debug)]
+pub enum ValidationError {
+    Base64(base64::DecodeError),
+    Invalid,
+}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Base64(err) => err.fmt(f),
+            Self::Invalid => f.write_str("invalid token"),
+        }
+    }
+}
+
 /// Basic HMAC token scheme.
 #[derive(Debug)]
 pub struct HmacScheme {
@@ -20,24 +35,7 @@ impl HmacScheme {
         let tag = hmac::sign(&self.key, data);
         base64::encode_config(tag.as_ref(), url_safe_config)
     }
-}
 
-#[derive(Debug)]
-pub enum ValidationError {
-    Base64(base64::DecodeError),
-    Invalid,
-}
-
-impl fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Base64(err) => err.fmt(f),
-            Self::Invalid => f.write_str("invalid token"),
-        }
-    }
-}
-
-impl HmacScheme {
     /// Validate a token.
     pub async fn validate_token(&self, data: &[u8], token: &str) -> Result<(), ValidationError> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
