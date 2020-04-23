@@ -122,7 +122,7 @@ impl ChainCommitmentScheme<HttpConnector> {
         let raw_script = output.script_pubkey.as_bytes();
 
         // Check length
-        if raw_script.len() != 2 + COMMITMENT_LEN || raw_script[1] != 2 + COMMITMENT_LEN as u8 {
+        if raw_script.len() != 2 + COMMITMENT_LEN || raw_script[1] != COMMITMENT_LEN as u8 {
             return Err(ValidationError::IncorrectLength);
         }
 
