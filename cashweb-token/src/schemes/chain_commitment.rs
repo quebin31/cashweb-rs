@@ -56,7 +56,7 @@ pub fn construct_token_raw(tx_id: &[u8], vout: u32) -> Vec<u8> {
     [tx_id, &vout.to_le_bytes()[..]].concat()
 }
 
-// Construct the token.
+/// Construct the token.
 pub fn construct_token(tx_id: &[u8], vout: u32) -> String {
     let raw_token = construct_token_raw(tx_id, vout);
     let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
@@ -82,7 +82,7 @@ impl ChainCommitmentScheme<HttpConnector> {
         pub_key_hash: &[u8],
         address_metadata_hash: &[u8],
         token: &str,
-    ) -> Result<(), ValidationError> {
+    ) -> Result<Vec<u8>, ValidationError> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let outpoint_raw =
             base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;
@@ -132,6 +132,6 @@ impl ChainCommitmentScheme<HttpConnector> {
         if expected_commitment != commitment {
             return Err(ValidationError::Invalid)
         }
-        Ok(())
+        Ok(outpoint_raw)
     }
 }
