@@ -6,7 +6,11 @@ use bytes::Bytes;
 use http::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
 use prost::{DecodeError, Message};
 
-use protobuf::bip70::Payment;
+pub mod bip70 {
+    include!(concat!(env!("OUT_DIR"), "/bip70.rs"));
+}
+
+use bip70::Payment;
 
 /// The error type of payment preprocessing.
 #[derive(Debug)]
@@ -58,7 +62,7 @@ pub async fn preprocess_payment(
     }
 
     // Read and parse payment proto
-    let payment = Payment::decode(body).map_err(PreprocessingError::PaymentDecode)?;
+    let payment = bip70::Payment::decode(body).map_err(PreprocessingError::PaymentDecode)?;
 
     Ok(payment)
 }

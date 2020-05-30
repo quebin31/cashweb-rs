@@ -18,4 +18,5 @@ hyper = "0.13.5"
 prost = "0.6.1"
 tokio = { version = "0.2.18", features = ["time"] }
 
-protobuf = { version = "0.1.0-alpha.0", package = "cashweb-protobuf", path = "../cashweb-protobuf" }
+[build-dependencies]
+prost-build = "0.6.1"
