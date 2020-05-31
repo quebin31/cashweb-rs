@@ -55,6 +55,8 @@ impl<C> BitcoinClient<C>
 where
     C: Connect + Clone + Send + Sync + 'static,
 {
+
+    /// Calls the `getnewaddress` method.
     pub async fn get_new_addr(&self) -> Result<String, NodeError> {
         let request = self
             .build_request()
@@ -71,6 +73,7 @@ where
             .map_err(NodeError::Json)
     }
 
+    /// Calls the `sendrawtransaction` method.
     pub async fn send_tx(&self, raw_tx: &[u8]) -> Result<String, NodeError> {
         let request = self
             .build_request()
@@ -89,6 +92,7 @@ where
             .map_err(NodeError::Json)
     }
 
+    /// Calls the `getrawtransaction` method.
     pub async fn get_raw_transaction(&self, tx_id: &[u8]) -> Result<Vec<u8>, NodeError> {
         let request = self
             .build_request()

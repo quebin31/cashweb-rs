@@ -7,6 +7,7 @@ use bitcoin::{
 use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
 use ring::digest::{Context, SHA256};
 
+/// The error type for token validation.
 #[derive(Debug)]
 pub enum ValidationError {
     Base64(base64::DecodeError),
