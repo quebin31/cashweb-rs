@@ -55,7 +55,6 @@ impl<C> BitcoinClient<C>
 where
     C: Connect + Clone + Send + Sync + 'static,
 {
-
     /// Calls the `getnewaddress` method.
     pub async fn get_new_addr(&self) -> Result<String, NodeError> {
         let request = self

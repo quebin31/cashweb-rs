@@ -131,7 +131,7 @@ impl ChainCommitmentScheme<HttpConnector> {
         let commitment = &raw_script[2..34];
         let expected_commitment = construct_commitment(pub_key_hash, address_metadata_hash);
         if expected_commitment != commitment {
-            return Err(ValidationError::Invalid)
+            return Err(ValidationError::Invalid);
         }
         Ok(outpoint_raw)
     }
