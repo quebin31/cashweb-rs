@@ -12,11 +12,11 @@ categories = ["development-tools"]
 
 [dependencies]
 bytes = "0.5.4"
-dashmap = "3.11.1"
+dashmap = "3.11.4"
 http = "0.2.1"
-hyper = "0.13.5"
+hyper = "0.13.6"
 prost = "0.6.1"
-tokio = { version = "0.2.18", features = ["time"] }
+tokio = { version = "0.2.21", features = ["time"] }
 
 [build-dependencies]
 prost-build = "0.6.1"
