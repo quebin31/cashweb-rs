@@ -1,24 +1,37 @@
-# Cash:web Library
+<h1 align="center">
+  Cash:web Utility Library
+</h1>
 
-`cashweb` is a collection of useful components, built ontop of the [Tower](https://github.com/tower-rs/tower) library, designed for quick integration of the [POP token protocol](https://github.com/cashweb/specifications/blob/doc/bip70-token-protocol/proof-of-payment-token/specification.mediawiki#cite_ref-1-0) into Rust services.
+<p align="center">
+  <a href="https://github.com/cashweb/cashweb-rs/actions">
+    <img alt="Build Status" src="https://github.com/cashweb/cashweb-rs/workflows/CI/badge.svg">
+  </a>
 
-The aim of this library is to provide a framework were everything unspecified in the protocol is generic and everything specified in the protocol is automatically implemented.
+  <a href="LICENSE">
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg">
+  </a>
 
-### What is Tower?
+  <a href="https://crates.io/crates/cashweb">
+    <img alt="Cargo" src="https://img.shields.io/crates/v/cashweb.svg">
+  </a>
 
-> Tower is a library of modular and reusable components for building robust networking clients and servers.
+  <a href="https://docs.rs/cashweb">
+    <img alt="Cargo" src="https://docs.rs/cashweb/badge.svg">
+  </a>
+</p>
+
+`cashweb` is a collection of useful components, designed for quick integration of the following protocols:
+* [Proof-of-Payment Authorization Framework](https://github.com/cashweb/specifications/blob/master/proof-of-payment-token/specification.mediawiki)
+* [Authorization Wrapper Protocol](https://github.com/cashweb/specifications/blob/master/authorization-wrapper-protocol/specification.mediawiki)
+* [Keyserver Protocol](https://github.com/cashweb/specifications/blob/master/keyserver-protocol/specification.mediawiki)
+* [Relay Server Protocol](https://github.com/cashweb/specifications/blob/master/relay-server-protocol/specification.mediawiki)
 
 ## Usage
 
 Add this to your `cargo.toml`
 
 ```toml
-tower-pop-token = "0.1"
+cashweb-rs = "0.1.0-alpha.3"
 ```
 
 The current version requires Rust 1.39 or later.
-
-
-## Getting Started
-
-TODO
