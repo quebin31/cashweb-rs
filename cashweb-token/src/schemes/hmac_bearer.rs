@@ -2,6 +2,7 @@ use std::fmt;
 
 use ring::hmac;
 
+/// The error type associated with basic HMAC token validation.
 #[derive(Debug)]
 pub enum ValidationError {
     Base64(base64::DecodeError),

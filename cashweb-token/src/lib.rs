@@ -2,7 +2,7 @@ pub mod schemes;
 
 use http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 
-/// Extract POP token from `Authorization` header.
+/// Extract a POP token from `Authorization` header.
 pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
     if let Ok(header_str) = value.to_str() {
         if &header_str[..4] == "POP " {
@@ -15,7 +15,7 @@ pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
     }
 }
 
-/// Extract POP token from `HeaderMap`.
+/// Extract the first POP token from `HeaderMap`.
 pub fn extract_pop(headers: &HeaderMap) -> Option<&str> {
     headers
         .get_all(AUTHORIZATION)

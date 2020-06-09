@@ -12,7 +12,7 @@ pub mod bip70 {
 
 use bip70::Payment;
 
-/// The error type of payment preprocessing.
+/// The error type associated with payment preprocessing.
 #[derive(Debug)]
 pub enum PreprocessingError {
     /// Missing the `application/bitcoincash-paymentack` header.

@@ -4,7 +4,7 @@ use bytes::Buf;
 
 use super::Decodable;
 
-/// Error associated with variable sized integer parsing.
+/// The error type associated with `VarInt` deserialization.
 #[derive(Debug)]
 pub enum DecodeError {
     TooShort,
@@ -20,6 +20,7 @@ impl fmt::Display for DecodeError {
     }
 }
 
+/// Represents a variable-length integer.
 pub struct VarInt(u64);
 
 impl Into<u64> for VarInt {
@@ -31,7 +32,7 @@ impl Into<u64> for VarInt {
 impl Decodable for VarInt {
     type Error = DecodeError;
 
-    /// Parse variable sized integer.
+    /// Parse variable-length integer.
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error> {
         if !buf.has_remaining() {
             return Err(Self::Error::TooShort);

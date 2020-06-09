@@ -11,6 +11,7 @@ pub struct Outpoint {
     pub vout: u32,
 }
 
+/// The error type associated with `Outpoint` deserialization.
 #[derive(Debug)]
 pub struct DecodeError;
 

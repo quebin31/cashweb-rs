@@ -11,6 +11,7 @@ use crate::{
     Decodable,
 };
 
+/// The error type associated with `Input` deserialization.
 #[derive(Debug)]
 pub enum DecodeError {
     Outpoint(OutpointDecodeError),

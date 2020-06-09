@@ -8,10 +8,14 @@ use crate::{
     Decodable,
 };
 
+/// The error type associated with `Output` deserialization.
 #[derive(Debug)]
 pub enum DecodeError {
+    /// Value is too short.
     ValueTooShort,
+    /// Unable to decode the script length variable-length integer.
     ScriptLen(VarIntDecodeError),
+    /// Script is too short.
     ScriptTooShort,
 }
 
@@ -19,7 +23,7 @@ impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ValueTooShort => f.write_str("value too short"),
-            Self::ScriptLen(err) => f.write_str(&format!("script length; {}", err)),
+            Self::ScriptLen(err) => f.write_str(&format!("script length: {}", err)),
             Self::ScriptTooShort => f.write_str("script too short"),
         }
     }
