@@ -1,8 +1,8 @@
 use std::{convert::TryInto, fmt};
 
 use bitcoin::{
-    consensus::encode::{Decodable, Error as BitcoinError},
-    Transaction,
+    prelude::{Transaction, TransactionDecodeError},
+    Decodable,
 };
 use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
 use ring::digest::{Context, SHA256};
@@ -16,7 +16,7 @@ pub enum ValidationError {
     Node(NodeError),
     NotOpReturn,
     OutputNotFound,
-    Transaction(BitcoinError),
+    Transaction(TransactionDecodeError),
     TokenLength,
 }
 
@@ -103,7 +103,7 @@ impl ChainCommitmentScheme<HttpConnector> {
             .get_raw_transaction(tx_id)
             .await
             .map_err(ValidationError::Node)?;
-        let transaction = Transaction::consensus_decode(&raw_transaction[..])
+        let transaction = Transaction::decode(&mut raw_transaction.as_slice())
             .map_err(ValidationError::Transaction)?;
 
         // Get vout
@@ -112,15 +112,15 @@ impl ChainCommitmentScheme<HttpConnector> {
 
         // Parse script
         let output = transaction
-            .output
+            .outputs
             .get(vout as usize)
             .ok_or(ValidationError::OutputNotFound)?;
 
-        if !output.script_pubkey.is_op_return() {
+        if !output.script.is_op_return() {
             return Err(ValidationError::NotOpReturn);
         }
 
-        let raw_script = output.script_pubkey.as_bytes();
+        let raw_script = output.script.as_bytes();
 
         // Check length
         if raw_script.len() != 2 + COMMITMENT_LEN || raw_script[1] != COMMITMENT_LEN as u8 {

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "cashweb",
+    "cashweb-bitcoin",
     "cashweb-bitcoin-client",
     "cashweb-payments",
     "cashweb-token"

@@ -1,0 +1,11 @@
+[package]
+name = "cashweb-bitcoin"
+version = "0.1.0-alpha.0"
+authors = ["Harry Barber <harrybarber@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+bytes = "0.5.4"
+
+[dev-dependencies]
+hex = "0.4.2"
