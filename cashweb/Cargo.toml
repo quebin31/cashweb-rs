@@ -11,6 +11,8 @@ description = "A collection of useful cash:web helper libraries."
 categories = ["development-tools"]
 
 [dependencies]
+auth-wrapper = { version = "0.1.0-alpha.0", package = "cashweb-auth-wrapper", path = "../cashweb-auth-wrapper" }
+bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
 bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
 payments = { version = "0.1.0-alpha.0", package = "cashweb-payments", path = "../cashweb-payments" }
 token = { version = "0.1.0-alpha.2", package = "cashweb-token", path = "../cashweb-token" }

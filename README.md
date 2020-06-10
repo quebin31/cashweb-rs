@@ -1,5 +1,5 @@
 <h1 align="center">
-  Cash:web Utility Library
+  Cash:Web Utility Library
 </h1>
 
 <p align="center">
