@@ -23,17 +23,17 @@ type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
 /// Represents a message post-parsing.
 pub struct ParsedMessage {
-    source_public_key: PublicKey,
-    destination_public_key: PublicKey,
-    timestamp: i64,
-    received_time: i64,
-    payload_digest: [u8; 32],
-    stamp_data: StampData,
-    scheme: EncryptionScheme,
-    salt: Vec<u8>,
-    payload_hmac: [u8; 32],
-    payload_size: u64,
-    payload: Vec<u8>,
+    pub source_public_key: PublicKey,
+    pub destination_public_key: PublicKey,
+    pub timestamp: i64,
+    pub received_time: i64,
+    pub payload_digest: [u8; 32],
+    pub stamp_data: StampData,
+    pub scheme: EncryptionScheme,
+    pub salt: Vec<u8>,
+    pub payload_hmac: [u8; 32],
+    pub payload_size: u64,
+    pub payload: Vec<u8>,
 }
 
 pub enum ParseError {
@@ -153,8 +153,8 @@ pub fn authenticate(
 }
 
 pub struct DecryptResult {
-    txs: Vec<Transaction>,
-    payload: Payload,
+    pub txs: Vec<Transaction>,
+    pub payload: Payload,
 }
 
 #[derive(Debug)]

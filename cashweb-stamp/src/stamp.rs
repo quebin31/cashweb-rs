@@ -23,6 +23,7 @@ pub enum StampError {
     DegenerateCombination,
     ChildNumberOverflow,
     UnsupportedStampType,
+    NoneType,
 }
 
 impl fmt::Display for StampError {
@@ -35,6 +36,7 @@ impl fmt::Display for StampError {
             Self::DegenerateCombination => "degenerate pubkey combination",
             Self::ChildNumberOverflow => "child number is too large",
             Self::UnsupportedStampType => "unsupported stamp type",
+            Self::NoneType => "stamp type is none",
         };
         f.write_str(printable)
     }
@@ -66,6 +68,10 @@ pub fn verify_stamp(
     stamp_type: StampType,
     network: Network,
 ) -> Result<Vec<Transaction>, StampError> {
+    if stamp_type == StampType::None {
+        return Err(StampError::NoneType);
+    }
+
     // Calculate master pubkey
     let payload_secret_key = SecretKey::from_slice(&payload_digest.as_ref()).unwrap(); // TODO: Double check this is safe
     let payload_public_key =
