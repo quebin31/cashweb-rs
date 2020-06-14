@@ -7,7 +7,7 @@ message Header {
   string value = 2;
 }
 
-// Entry is an indidual piece of structured data.
+// Entry is an individual piece of structured data.
 message Entry {
   // Type informs the wallet what to do with this payload.
   string kind = 1;
@@ -19,21 +19,27 @@ message Entry {
   bytes entry_data = 3;
 }
 
-// Payload is the user-specified data section of a AddressMetadata that is
+// Payload is the user-specified data section of the message that is
 // encrypted by the shared secret.
 message Payload {
-  // The encrypted entries.
-  repeated Entry entries = 1;
+  // Timestamp provided by sender.
+  int64 timestamp = 1;
+  // The entries, containing body of the payload.
+  repeated Entry entries = 2;
   // Possibly other stuff relevant to the whole message later
 }
 
 // A stamp transaction paired with a list of vouts identifying to stamp outputs.
 message StampOutpoints {
+  // A serialized stamp transaction.
   bytes stamp_tx = 1;
+  // The specified outputs of the stamp transaction.
   repeated uint32 vouts = 2;
 }
 
-message StampData {
+// Stamp represents all data concerning the stamp.
+message Stamp {
+  // Represents the stamp type.
   enum StampType {
     None = 0;
     // Hash commitment means the stamp is being sent to the address specified by
@@ -42,6 +48,7 @@ message StampData {
     // ChainCode: SHA256(ciphertext)
     MessageCommitment = 1;
   }
+  // The stamp type.
   StampType stamp_type = 1;
   // A collection of stamp outpoints.
   repeated StampOutpoints stamp_outpoints = 2;
@@ -51,21 +58,19 @@ message StampData {
 message Message {
   // The senders serialized pubkey.
   bytes source_pub_key = 1;
-  // The receivers serialized pubkey.
+  // The destinations serialized pubkey.
   bytes destination_pub_key = 2;
-  // Untrusted timestamp provided by sender. Covered by HMAC
-  int64 timestamp = 3;
-  // Maleable server time. This field is optional
-  int64 received_time = 4;
-  // Standard schemes for generating encryption key.
+  // Maleable server time. This field is optional.
+  int64 received_time = 3;
   // The SHA-256 digest of the payload. This is independent of the MAC
   // as only the sender/receiver can verify MAC. The relay server may set this
   // field if it strips the ciphertext from the message it sends to the
   // client over websockets. In which case the ciphertext would be available
   // over the payloads API.
-  bytes payload_digest = 5;
-  // Information about the stamp transactions
-  StampData stamp_data = 6;
+  bytes payload_digest = 4;
+  // The stamp attached to the message.
+  Stamp stamp = 5;
+  // Represents a encryption scheme.
   enum EncryptionScheme {
     // None indicates the message is plaintext.
     None = 0;
@@ -76,7 +81,8 @@ message Message {
     // AES256.
     EphemeralDH = 1;
   }
-  EncryptionScheme scheme = 7;
+  // The encryption scheme used on the payload.
+  EncryptionScheme scheme = 6;
   // This salt is added to the HMAC to provide a shared source of entropy
   // (e.g. the Chaincode for stamp outputs: HASH256(chaincode))
   // but also to provide the sender a way to add a commitment to any additional
@@ -87,15 +93,15 @@ message Message {
   // instead of sent.) This may be important since some wallets may want to
   // increment internal state with each message they send -- and this provides a
   // way to do so that is strong against forgery.
-  bytes salt = 9;
+  bytes salt = 7;
   // The HMAC of the payload using the shared key.
-  // Value = HMAC_SHA256(salt, HMAC_SHA256(timestamp, HMAC_SHA256(ser(sdP),
-  // payload digest)))
-  bytes payload_hmac = 10;
+  //
+  // Value given by salt = HMAC_SHA256(salt, HMAC_SHA256(ser(sdP), payload digest))
+  bytes payload_hmac = 8;
   // Optional size, which may be set by the relay server. This enables the
   // client to deside if they want to download the payload based on the stamp
   // value.
-  uint64 payload_size = 11;
+  uint64 payload_size = 9;
   // The serialized and encrypted payload covered by the HMAC.
   // This field may be stripped by a relay server if it is large. In which
   // case it will be made available at the payloads endpoint via the digest.

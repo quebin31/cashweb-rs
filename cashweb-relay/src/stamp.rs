@@ -12,7 +12,7 @@ use secp256k1::{
     Secp256k1,
 };
 
-pub use crate::models::{stamp_data::StampType, StampData, StampOutpoints};
+pub use crate::models::{stamp::StampType, Stamp, StampOutpoints};
 
 /// Error associated with verification of stamps.
 #[derive(Debug)]
@@ -43,7 +43,7 @@ impl fmt::Display for StampError {
     }
 }
 
-impl StampData {
+impl Stamp {
     /// Verify that the stamp covers the payload_digest.
     #[inline]
     pub fn verify_stamp(
