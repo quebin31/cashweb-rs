@@ -97,6 +97,6 @@ mod tests {
     fn decode() {
         let hex_tx = "0200000001dc0e0c39e2d7a7150ad058ab80b7b1d543097a785e4616fa59dcae8fbecce4240100000000ffffffff0120aa4400000000001976a914043ea5736aa3a48ebdd5034309b590505d8bdd9088ac00000000";
         let raw_tx = hex::decode(hex_tx).unwrap();
-        let tx = Transaction::decode(&mut raw_tx.as_slice()).unwrap();
+        Transaction::decode(&mut raw_tx.as_slice()).unwrap();
     }
 }

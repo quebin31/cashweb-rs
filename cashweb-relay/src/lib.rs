@@ -21,7 +21,7 @@ use stamp::*;
 
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
-/// Represents a message post-parsing.
+/// Represents a [Message](struct.Message.html) post-parsing.
 #[derive(Debug)]
 pub struct ParsedMessage {
     pub source_public_key: PublicKey,

@@ -37,7 +37,7 @@ message StampOutpoints {
   repeated uint32 vouts = 2;
 }
 
-// Stamp represents all data concerning the stamp.
+// Represents a stamp. This is attached to Message in order to attach value.
 message Stamp {
   // Represents the stamp type.
   enum StampType {
@@ -54,7 +54,7 @@ message Stamp {
   repeated StampOutpoints stamp_outpoints = 2;
 }
 
-// The message type transmitted in the cashweb protocol.
+// The primary message used in communication over the cashweb protocol.
 message Message {
   // The senders serialized pubkey.
   bytes source_pub_key = 1;
@@ -63,10 +63,11 @@ message Message {
   // Maleable server time. This field is optional.
   int64 received_time = 3;
   // The SHA-256 digest of the payload. This is independent of the MAC
-  // as only the sender/receiver can verify MAC. The relay server may set this
-  // field if it strips the ciphertext from the message it sends to the
-  // client over websockets. In which case the ciphertext would be available
-  // over the payloads API.
+  // as only the sender/receiver can verify MAC.
+  //
+  // The relay server may set this field if it strips the ciphertext from the
+  // message it sends to the client over websockets. In which case the
+  // ciphertext would be available over the payloads API.
   bytes payload_digest = 4;
   // The stamp attached to the message.
   Stamp stamp = 5;
@@ -87,22 +88,23 @@ message Message {
   // (e.g. the Chaincode for stamp outputs: HASH256(chaincode))
   // but also to provide the sender a way to add a commitment to any additional
   // data they may want to prove they had later.
+  //
   // One such example would be a commitment to their private key, so that
-  // they can prove they sent the message. (Since we are not using signatures
-  // anyone could swap dest/source addresses and claim the messages was received
-  // instead of sent.) This may be important since some wallets may want to
-  // increment internal state with each message they send -- and this provides a
-  // way to do so that is strong against forgery.
+  // they can prove they sent the message. This may be important since some
+  // wallets may want to increment internal state with each message they send --
+  // and this provides a way to do so that is strong against forgery.
   bytes salt = 7;
   // The HMAC of the payload using the shared key.
   //
-  // Value given by salt = HMAC_SHA256(salt, HMAC_SHA256(ser(sdP), payload digest))
+  // Value given by salt = HMAC_SHA256(salt, HMAC_SHA256(ser(sdP), payload
+  // digest))
   bytes payload_hmac = 8;
   // Optional size, which may be set by the relay server. This enables the
   // client to deside if they want to download the payload based on the stamp
   // value.
   uint64 payload_size = 9;
   // The serialized and encrypted payload covered by the HMAC.
+  //
   // This field may be stripped by a relay server if it is large. In which
   // case it will be made available at the payloads endpoint via the digest.
   // If the ciphertext is not set, the payload digest becomes a mandatory field.
