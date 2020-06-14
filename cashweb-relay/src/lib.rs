@@ -57,7 +57,7 @@ pub enum ParseError {
 pub enum DigestError {
     DigestAndPayloadMissing,
     FraudulentDigest,
-    IncorrectLengthDigest
+    IncorrectLengthDigest,
 }
 
 impl Message {
