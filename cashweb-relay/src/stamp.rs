@@ -12,8 +12,9 @@ use secp256k1::{
     Secp256k1,
 };
 
-use crate::models::{stamp_data::StampType, StampData, StampOutpoints};
+pub use crate::models::{stamp_data::StampType, StampData, StampOutpoints};
 
+/// Error associated with verification of stamps.
 #[derive(Debug)]
 pub enum StampError {
     Decode(TransactionDecodeError),
@@ -43,6 +44,7 @@ impl fmt::Display for StampError {
 }
 
 impl StampData {
+    /// Verify that the stamp covers the payload_digest.
     #[inline]
     pub fn verify_stamp(
         &self,
@@ -60,6 +62,7 @@ impl StampData {
     }
 }
 
+/// Verify that the stamp covers the payload_digest.
 #[inline]
 pub fn verify_stamp(
     stamp_outpoints: &[StampOutpoints],

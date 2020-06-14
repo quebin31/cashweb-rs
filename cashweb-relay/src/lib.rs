@@ -1,4 +1,4 @@
-pub mod models;
+mod models;
 pub mod stamp;
 
 use std::convert::TryInto;
@@ -16,7 +16,7 @@ use ring::{
 };
 use secp256k1::{key::PublicKey, Error as SecpError, Secp256k1};
 
-use crate::models::{message::EncryptionScheme, Message, Payload, StampData};
+pub use crate::models::{message::EncryptionScheme, Message, Payload};
 use stamp::*;
 
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
@@ -36,6 +36,8 @@ pub struct ParsedMessage {
     pub payload: Vec<u8>,
 }
 
+/// Error associated with `Message` parsing.
+#[derive(Debug)]
 pub enum ParseError {
     SourcePublicKey(SecpError),
     DestinationPublicKey(SecpError),
@@ -48,6 +50,9 @@ pub enum ParseError {
 }
 
 impl Message {
+    /// Parse a [`Message`].
+    ///
+    /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of 
     pub fn parse(self) -> Result<ParsedMessage, ParseError> {
         // Decode public keys
         let source_public_key =

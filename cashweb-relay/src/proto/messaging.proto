@@ -47,6 +47,7 @@ message StampData {
   repeated StampOutpoints stamp_outpoints = 2;
 }
 
+// The message type transmitted in the cashweb protocol.
 message Message {
   // The senders serialized pubkey.
   bytes source_pub_key = 1;

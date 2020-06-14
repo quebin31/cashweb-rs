@@ -5,6 +5,6 @@ members = [
     "cashweb-bitcoin",
     "cashweb-bitcoin-client",
     "cashweb-payments",
-    "cashweb-stamp",
+    "cashweb-relay",
     "cashweb-token"
 ]
