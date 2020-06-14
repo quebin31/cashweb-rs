@@ -1,5 +1,6 @@
 mod models;
 pub mod stamp;
+pub use secp256k1;
 
 use std::convert::TryInto;
 
@@ -330,5 +331,29 @@ impl ParsedMessage {
             Payload::decode(&mut raw_payload.as_slice()).map_err(DecryptError::Payload)?;
 
         Ok(DecryptResult { txs, payload })
+    }
+}
+
+impl MessagePage {
+    /// Convert the [MessagePage](struct.MessagePage.html) into a [PayloadPage](struct.PayloadPage.html).
+    pub fn into_payload_page(self) -> PayloadPage {
+        self.into()
+    }
+}
+
+impl Into<PayloadPage> for MessagePage {
+    fn into(self) -> PayloadPage {
+        let payloads: Vec<Vec<u8>> = self
+            .messages
+            .into_iter()
+            .map(|message| message.payload)
+            .collect();
+        PayloadPage {
+            start_time: self.start_time,
+            end_time: self.end_time,
+            start_digest: self.start_digest,
+            end_digest: self.end_digest,
+            payloads,
+        }
     }
 }
