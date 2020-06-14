@@ -41,6 +41,7 @@ pub struct ParsedMessage {
 /// Error associated with [Message](struct.Message.html) parsing.
 #[derive(Debug)]
 pub enum ParseError {
+    Digest(DigestError),
     SourcePublicKey(SecpError),
     DestinationPublicKey(SecpError),
     DigestAndPayloadMissing,
@@ -51,23 +52,23 @@ pub enum ParseError {
     UnexpectedLengthPayloadHmac,
 }
 
-impl Message {
-    /// Parse a [Message](struct.Message.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
-    ///
-    /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields into arrays.
-    pub fn parse(self) -> Result<ParsedMessage, ParseError> {
-        // Decode public keys
-        let source_public_key =
-            PublicKey::from_slice(&self.source_pub_key).map_err(ParseError::SourcePublicKey)?;
-        let destination_public_key = PublicKey::from_slice(&self.destination_pub_key)
-            .map_err(ParseError::DestinationPublicKey)?;
+/// Error associated with getting the `payload_digest`.
+#[derive(Debug)]
+pub enum DigestError {
+    DigestAndPayloadMissing,
+    FraudulentDigest,
+    IncorrectLengthDigest
+}
 
+impl Message {
+    /// Get payload digest, if `payload_digest` is missing then calculate it.
+    pub fn payload_digest(&self) -> Result<[u8; 32], DigestError> {
         // Calculate payload digest
         let payload_digest: [u8; 32] = match self.payload_digest.len() {
             0 => {
                 // Check payload is not missing too
                 if self.payload.is_empty() {
-                    return Err(ParseError::DigestAndPayloadMissing);
+                    return Err(DigestError::DigestAndPayloadMissing);
                 }
                 let slice = &self.payload_digest[..];
                 slice.try_into().unwrap()
@@ -80,7 +81,7 @@ impl Message {
                         digest(&SHA256, &self.payload).as_ref().try_into().unwrap(); // This is safe
 
                     if payload_digest[..] == self.payload_digest[..] {
-                        return Err(ParseError::FraudulentDigest);
+                        return Err(DigestError::FraudulentDigest);
                     }
                     payload_digest
                 } else {
@@ -88,8 +89,24 @@ impl Message {
                     slice.try_into().unwrap()
                 }
             }
-            _ => return Err(ParseError::IncorrectLengthDigest),
+            _ => return Err(DigestError::IncorrectLengthDigest),
         };
+
+        Ok(payload_digest)
+    }
+
+    /// Parse a [Message](struct.Message.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
+    ///
+    /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields into arrays.
+    pub fn parse(self) -> Result<ParsedMessage, ParseError> {
+        // Decode public keys
+        let source_public_key =
+            PublicKey::from_slice(&self.source_pub_key).map_err(ParseError::SourcePublicKey)?;
+        let destination_public_key = PublicKey::from_slice(&self.destination_pub_key)
+            .map_err(ParseError::DestinationPublicKey)?;
+
+        // Calculate payload digest
+        let payload_digest = self.payload_digest().map_err(ParseError::Digest)?;
 
         // Parse stamp data
         let stamp = self.stamp.ok_or(ParseError::MissingStampData)?;
