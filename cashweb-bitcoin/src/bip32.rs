@@ -3,6 +3,8 @@ use std::convert::TryInto;
 use ring::hmac::{sign as hmac, Key as HmacKey, HMAC_SHA512};
 use secp256k1::{Error as SecpError, PublicKey, Secp256k1};
 
+use crate::Network;
+
 /// A BIP32 error
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Error {
@@ -19,13 +21,6 @@ pub struct IndexError(u32);
 /// Public key to public key derivation can not be performed for a hardened key.
 #[derive(Debug)]
 pub struct HardenedDeriveError;
-
-#[derive(Clone, Copy, Debug)]
-pub enum Network {
-    Mainnet,
-    Testnet,
-    Regtest,
-}
 
 #[derive(Clone, Copy, Debug)]
 pub enum ChildNumber {
