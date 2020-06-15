@@ -119,8 +119,8 @@ message MessagePage {
   repeated Message messages = 1;
   int64 start_time = 2;
   int64 end_time = 3;
-  int64 start_digest = 4;
-  int64 end_digest = 5;
+  bytes start_digest = 4;
+  bytes end_digest = 5;
 }
 
 // A page of payloads. Pulled from server via HTTP.
@@ -128,6 +128,6 @@ message PayloadPage {
   repeated bytes payloads = 1;
   int64 start_time = 2;
   int64 end_time = 3;
-  int64 start_digest = 4;
-  int64 end_digest = 5;
+  bytes start_digest = 4;
+  bytes end_digest = 5;
 }
