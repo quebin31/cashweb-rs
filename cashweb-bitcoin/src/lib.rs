@@ -6,6 +6,7 @@ pub mod var_int;
 use std::convert::TryFrom;
 
 use bytes::Buf;
+use serde::{Deserialize, Serialize};
 
 /// Provides a common interface for the deserialization of bitcoin structures.
 pub trait Decodable: Sized {
@@ -15,7 +16,8 @@ pub trait Decodable: Sized {
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error>;
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Network {
     Mainnet,
     Testnet,
