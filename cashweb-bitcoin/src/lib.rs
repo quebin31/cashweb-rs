@@ -49,3 +49,13 @@ impl Into<String> for Network {
         }
     }
 }
+
+impl std::string::ToString for Network {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Mainnet => "mainnet".to_string(),
+            Self::Testnet => "testnet".to_string(),
+            Self::Regtest => "regtest".to_string(),
+        }
+    }
+}
