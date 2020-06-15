@@ -2,7 +2,7 @@ mod models;
 pub mod stamp;
 pub use secp256k1;
 
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt};
 
 use aes::{
     block_cipher::generic_array::{typenum::U16, GenericArray},
@@ -47,10 +47,27 @@ pub enum ParseError {
     DestinationPublicKey(SecpError),
     DigestAndPayloadMissing,
     FraudulentDigest,
-    IncorrectLengthDigest,
-    MissingStampData,
+    UnexpectedLengthDigest,
+    MissingStamp,
     UnsupportedStampType,
     UnexpectedLengthPayloadHmac,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let printable = match self {
+            Self::Digest(err) => return err.fmt(f),
+            Self::SourcePublicKey(err) => return writeln!(f, "source public key: {}", err),
+            Self::DestinationPublicKey(err) => return writeln!(f, "destination public key: {}", err),
+            Self::DigestAndPayloadMissing => "digest and payload missing",
+            Self::FraudulentDigest => "fraudulent digest",
+            Self::UnexpectedLengthDigest => "unexpected length digest",
+            Self::MissingStamp => "missing stamp",
+            Self::UnsupportedStampType => "unsupported stamp type",
+            Self::UnexpectedLengthPayloadHmac => "unexpected length payload hmac",
+        };
+        f.write_str(printable)
+    }
 }
 
 /// Error associated with getting the `payload_digest`.
@@ -58,7 +75,18 @@ pub enum ParseError {
 pub enum DigestError {
     DigestAndPayloadMissing,
     FraudulentDigest,
-    IncorrectLengthDigest,
+    UnexpectedLengthDigest,
+}
+
+impl fmt::Display for DigestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let printable = match self {
+            Self::DigestAndPayloadMissing => "digest and payload missing",
+            Self::FraudulentDigest => "fraudulent digest",
+            Self::UnexpectedLengthDigest => "unexpected length digest",
+        };
+        f.write_str(printable)
+    }
 }
 
 impl Message {
@@ -90,7 +118,7 @@ impl Message {
                     slice.try_into().unwrap()
                 }
             }
-            _ => return Err(DigestError::IncorrectLengthDigest),
+            _ => return Err(DigestError::UnexpectedLengthDigest),
         };
 
         Ok(payload_digest)
@@ -110,7 +138,7 @@ impl Message {
         let payload_digest = self.payload_digest().map_err(ParseError::Digest)?;
 
         // Parse stamp data
-        let stamp = self.stamp.ok_or(ParseError::MissingStampData)?;
+        let stamp = self.stamp.ok_or(ParseError::MissingStamp)?;
 
         // Parse scheme
         let scheme =
