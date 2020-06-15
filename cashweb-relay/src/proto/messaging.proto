@@ -71,9 +71,9 @@ message Message {
   bytes payload_digest = 4;
   // The stamp attached to the message.
   Stamp stamp = 5;
-  // Represents a encryption scheme.
+  // Represents an encryption scheme.
   enum EncryptionScheme {
-    // None indicates the message is plaintext.
+    // Indicates the message is plaintext.
     None = 0;
     // For EphemeralDH, ECDH is used to generate a shared secret based on the
     // combination of the source and destination pubkeys. ECDH combination of
