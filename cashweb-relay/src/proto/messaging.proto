@@ -1,7 +1,7 @@
 syntax = "proto3";
 package messaging;
 
-// Basic key/value used to store header data.
+// Basic key/value pair used to store header data.
 message Header {
   string name = 1;
   string value = 2;
@@ -9,7 +9,7 @@ message Header {
 
 // Entry is an individual piece of structured data.
 message Entry {
-  // Type informs the wallet what to do with this payload.
+  // Informs the wallet what to do with this payload.
   string kind = 1;
   // The headers provide some extra metadata about the field that
   // may be relevant to the wallet.  At this time there are no meaningful
@@ -56,9 +56,9 @@ message Stamp {
 
 // The primary message used in communication over the cashweb protocol.
 message Message {
-  // The senders serialized pubkey.
+  // The senders serialized public key.
   bytes source_pub_key = 1;
-  // The destinations serialized pubkey.
+  // The destinations serialized public key.
   bytes destination_pub_key = 2;
   // Maleable server time. This field is optional.
   int64 received_time = 3;
@@ -76,16 +76,18 @@ message Message {
     // Indicates the message is plaintext.
     None = 0;
     // For EphemeralDH, ECDH is used to generate a shared secret based on the
-    // combination of the source and destination pubkeys. ECDH combination of
-    // the source and destination keys. Shared secret is S = H(ser(abG)) where
-    // ser() specifies serialization of the point. Payload is encrypted with
-    // AES256.
+    // combination of the source and destination pubkeys. The shared secret is
+    // the ECDH combination of the source and destination keys, S =
+    // SHA256(ser(abG)), where ser() specifies serialization of the point.
+
+    // The payload is encrypted with AES128 CBC with key given by the first 16
+    // bytes of S and the IV given by the last 16 bytes of S.
     EphemeralDH = 1;
   }
   // The encryption scheme used on the payload.
   EncryptionScheme scheme = 6;
   // This salt is added to the HMAC to provide a shared source of entropy
-  // (e.g. the Chaincode for stamp outputs: HASH256(chaincode))
+  // (e.g. the Chaincode for stamp outputs: SHA256(chaincode))
   // but also to provide the sender a way to add a commitment to any additional
   // data they may want to prove they had later.
   //
@@ -114,20 +116,44 @@ message Message {
 // Collection of messages. Pushed from client to server via HTTP.
 message MessageSet { repeated Message messages = 1; }
 
+// An error associated with the validation and insertion of a message.
+message PushError {
+  // Status code of the error.
+  uint32 status_code = 1;
+  // Textual information of the error.
+  string error_text = 2;
+}
+
+// A collection of errors yeilded when pushing message to the server.
+message PushErrors {
+  // A map of errors, keyed by the index of the failed message.
+  map<int32, PushError> errors = 1;
+}
+
 // A page of messages. Pulled from server via HTTP.
 message MessagePage {
+  // Collection of messages.
   repeated Message messages = 1;
+  // The received time of the earliest message in the page.
   int64 start_time = 2;
+  // The received time of the latest message in the page.
   int64 end_time = 3;
+  // The payload digest of the earliest message in the page.
   bytes start_digest = 4;
+  // The payload digest of the latest message in the page.
   bytes end_digest = 5;
 }
 
 // A page of payloads. Pulled from server via HTTP.
 message PayloadPage {
+  // Collection of payloads.
   repeated bytes payloads = 1;
+  // The received time of the earliest payload in the page.
   int64 start_time = 2;
+  // The received time of the latest payload in the page.
   int64 end_time = 3;
+  // The payload digest of the earliest payload in the page.
   bytes start_digest = 4;
+  // The payload digest of the latest payload in the page.
   bytes end_digest = 5;
 }
