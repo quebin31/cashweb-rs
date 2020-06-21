@@ -1,11 +1,11 @@
 use std::fmt;
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 
 use super::script::Script;
 use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
-    Decodable,
+    Decodable, Encodable,
 };
 
 /// The error type associated with `Output` deserialization.
@@ -36,9 +36,24 @@ pub struct Output {
     pub script: Script,
 }
 
+impl Encodable for Output {
+    #[inline]
+    fn encoded_len(&self) -> usize {
+        8 + self.script.len_varint().encoded_len() + self.script.encoded_len()
+    }
+
+    #[inline]
+    fn encode_raw<B: BufMut>(&self, buf: &mut B) {
+        buf.put_u64(self.value);
+        self.script.len_varint().encode_raw(buf);
+        self.script.encode_raw(buf);
+    }
+}
+
 impl Decodable for Output {
     type Error = DecodeError;
 
+    #[inline]
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error> {
         // Get value
         if buf.remaining() < 8 {

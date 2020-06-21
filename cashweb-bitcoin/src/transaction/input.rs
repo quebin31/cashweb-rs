@@ -1,6 +1,6 @@
 use std::fmt;
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 
 use super::{
     outpoint::{DecodeError as OutpointDecodeError, Outpoint},
@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
-    Decodable,
+    Decodable, Encodable,
 };
 
 /// The error type associated with `Input` deserialization.
@@ -37,6 +37,24 @@ pub struct Input {
     pub outpoint: Outpoint,
     pub script: Script,
     pub sequence: u32,
+}
+
+impl Encodable for Input {
+    #[inline]
+    fn encoded_len(&self) -> usize {
+        self.outpoint.encoded_len()
+            + self.script.len_varint().encoded_len()
+            + self.script.encoded_len()
+            + 4
+    }
+
+    #[inline]
+    fn encode_raw<B: BufMut>(&self, buf: &mut B) {
+        self.outpoint.encode_raw(buf);
+        self.script.len_varint().encode_raw(buf);
+        self.script.encode_raw(buf);
+        buf.put_u32(self.sequence);
+    }
 }
 
 impl Decodable for Input {

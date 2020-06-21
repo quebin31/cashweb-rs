@@ -1,8 +1,8 @@
 use std::fmt;
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 
-use super::Decodable;
+use super::{Decodable, Encodable};
 
 /// The error type associated with `VarInt` deserialization.
 #[derive(Debug)]
@@ -21,11 +21,43 @@ impl fmt::Display for DecodeError {
 }
 
 /// Represents a variable-length integer.
-pub struct VarInt(u64);
+pub struct VarInt(pub u64);
 
 impl Into<u64> for VarInt {
     fn into(self) -> u64 {
         self.0
+    }
+}
+
+impl Encodable for VarInt {
+    #[inline]
+    fn encoded_len(&self) -> usize {
+        match self.0 {
+            0..=0xfc => 1,
+            0xfd..=0xffff => 3,
+            0x10000..=0xffffffff => 5,
+            _ => 9,
+        }
+    }
+
+    fn encode_raw<B: BufMut>(&self, buf: &mut B) {
+        match self.0 {
+            0..=0xfc => {
+                buf.put_uint(self.0, 1);
+            }
+            0xfd..=0xffff => {
+                buf.put_u8(0xfd);
+                buf.put_uint(self.0, 2);
+            }
+            0x10000..=0xffffffff => {
+                buf.put_u8(0xfe);
+                buf.put_uint(self.0, 4);
+            }
+            _ => {
+                buf.put_u8(0xff);
+                buf.put_u64(self.0);
+            }
+        }
     }
 }
 
@@ -66,7 +98,7 @@ impl Decodable for VarInt {
                     return Err(Self::Error::TooShort);
                 }
                 let x = buf.get_uint(2);
-                if x < 0xFD {
+                if x < 0xfd {
                     Err(Self::Error::NonMinimal)
                 } else {
                     Ok(Self(x))

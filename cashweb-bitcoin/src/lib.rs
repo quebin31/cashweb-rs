@@ -5,8 +5,29 @@ pub mod var_int;
 
 use std::convert::TryFrom;
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug)]
+pub struct InsufficientCapacity;
+
+/// Provides a common interface for the serialization of bitcoin structures.
+pub trait Encodable: Sized {
+    /// Returns the encoded length of the message.
+    fn encoded_len(&self) -> usize;
+
+    /// Encodes structure to a buffer.
+    fn encode<B: BufMut>(&self, buf: &mut B) -> Result<(), InsufficientCapacity> {
+        if buf.remaining_mut() < self.encoded_len() {
+            return Err(InsufficientCapacity);
+        }
+        self.encode_raw(buf);
+        Ok(())
+    }
+
+    /// Encodes structure to a buffer. This panics if buffer contains insufficient capacity.
+    fn encode_raw<B: BufMut>(&self, buf: &mut B);
+}
 
 /// Provides a common interface for the deserialization of bitcoin structures.
 pub trait Decodable: Sized {

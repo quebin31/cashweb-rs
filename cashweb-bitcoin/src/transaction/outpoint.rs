@@ -1,14 +1,27 @@
 use std::fmt;
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 
-use crate::Decodable;
+use crate::{Decodable, Encodable};
 
 /// Represents an outpoint.
 #[derive(Debug)]
 pub struct Outpoint {
     pub tx_id: [u8; 32],
     pub vout: u32,
+}
+
+impl Encodable for Outpoint {
+    #[inline]
+    fn encoded_len(&self) -> usize {
+        32 + 4
+    }
+
+    #[inline]
+    fn encode_raw<B: BufMut>(&self, buf: &mut B) {
+        buf.put(&self.tx_id[..]);
+        buf.put_u32(self.vout);
+    }
 }
 
 /// The error type associated with `Outpoint` deserialization.
@@ -24,6 +37,7 @@ impl fmt::Display for DecodeError {
 impl Decodable for Outpoint {
     type Error = DecodeError;
 
+    #[inline]
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error> {
         if buf.remaining() < 32 + 4 {
             return Err(DecodeError);
