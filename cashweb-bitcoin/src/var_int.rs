@@ -21,6 +21,7 @@ impl fmt::Display for DecodeError {
 }
 
 /// Represents a variable-length integer.
+#[derive(Debug, PartialEq)]
 pub struct VarInt(pub u64);
 
 impl Into<u64> for VarInt {

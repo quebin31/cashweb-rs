@@ -37,6 +37,7 @@ pub trait Decodable: Sized {
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error>;
 }
 
+/// Enumeration of all standard Bitcoin networks.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
@@ -45,6 +46,7 @@ pub enum Network {
     Regtest,
 }
 
+/// Network was unexpected.
 #[derive(Debug)]
 pub struct UnexpectedNetwork;
 
