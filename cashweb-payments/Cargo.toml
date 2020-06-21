@@ -11,7 +11,7 @@ description = "A helper library for cash:web payments."
 categories = ["development-tools"]
 
 [dependencies]
-bytes = "0.5.4"
+bytes = "0.5.5"
 dashmap = "3.11.4"
 http = "0.2.1"
 hyper = "0.13.6"

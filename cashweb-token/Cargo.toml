@@ -11,9 +11,9 @@ description = "A protobuf library for the cash:web tokens."
 categories = ["development-tools"]
 
 [dependencies]
-base64 = "0.12.1"
+base64 = "0.12.2"
 http = "0.2.1"
-ring = "0.16.14"
+ring = "0.16.15"
 
 bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
 bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
