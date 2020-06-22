@@ -17,8 +17,6 @@ pub struct ParsedAuthWrapper {
 /// The error associated with validation and parsing of the [AuthWrapper](struct.AuthWrapper.html).
 #[derive(Debug)]
 pub enum ParseError {
-    // InvalidSignature(SecpError),
-    Message(SecpError),
     PublicKey(SecpError),
     Signature(SecpError),
     UnsupportedScheme,
@@ -30,7 +28,6 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match self {
-            Self::Message(err) => return err.fmt(f),
             Self::PublicKey(err) => return err.fmt(f),
             Self::Signature(err) => return err.fmt(f),
             Self::UnsupportedScheme => "unsupported signature scheme",
@@ -98,6 +95,15 @@ impl AuthWrapper {
 pub enum VerifyError {
     Message(SecpError),
     InvalidSignature(SecpError),
+}
+
+impl fmt::Display for VerifyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Message(err) => return err.fmt(f),
+            Self::InvalidSignature(err) => return err.fmt(f),
+        };
+    }
 }
 
 impl ParsedAuthWrapper {
