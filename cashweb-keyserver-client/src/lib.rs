@@ -1,16 +1,20 @@
 use std::pin::Pin;
 
+use async_trait::async_trait;
 use futures_core::{
     task::{Context, Poll},
     Future,
 };
-use hyper::{body::aggregate, Client as HyperClient, Error as HyperError, StatusCode};
+use hyper::{
+    body::aggregate, http::uri::InvalidUri, Client as HyperClient, Error as HyperError, StatusCode,
+};
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
     Uri,
 };
 use prost::{DecodeError, Message as _};
 use tower_service::Service;
+use tower_util::ServiceExt;
 
 mod models {
     include!(concat!(env!("OUT_DIR"), "/keyserver.rs"));
@@ -34,11 +38,11 @@ impl Client<HttpConnector> {
 }
 
 /// Represents a request for the Peers object.
-pub struct GetPeer(Uri);
+pub struct GetPeers(Uri);
 
 /// The error associated with getting Peers from a keyserver.
 #[derive(Debug)]
-pub enum GetPeerError {
+pub enum GetPeersError {
     /// Error while processing the body.
     Body(HyperError),
     /// A connection error occured.
@@ -51,12 +55,12 @@ pub enum GetPeerError {
     PeeringDisabled,
 }
 
-impl<C> Service<GetPeer> for Client<C>
+impl<C> Service<GetPeers> for Client<C>
 where
     C: Connect + Clone + Send + Sync + 'static,
 {
     type Response = Peers;
-    type Error = GetPeerError;
+    type Error = GetPeersError;
     type Future =
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
 
@@ -64,7 +68,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, GetPeer(uri): GetPeer) -> Self::Future {
+    fn call(&mut self, GetPeers(uri): GetPeers) -> Self::Future {
         let client = self.inner_client.clone();
         let fut = async move {
             let response = client.get(uri).await.map_err(Self::Error::Connection)?;
@@ -135,5 +139,75 @@ where
             Ok(wrapped_metadata)
         };
         Box::pin(fut)
+    }
+}
+
+pub enum KeyserverError<E> {
+    Uri(InvalidUri),
+    Error(E),
+}
+
+impl<E> From<E> for KeyserverError<E> {
+    fn from(err: E) -> Self {
+        Self::Error(err)
+    }
+}
+
+#[async_trait]
+pub trait KeyserverClient {
+    async fn get_peers(
+        &self,
+        keyserver_url: &str,
+    ) -> Result<Peers, KeyserverError<GetPeersError>>;
+
+    async fn get_metadata(
+        &self,
+        keyserver_url: &str,
+        address: &str,
+    ) -> Result<WrappedMetadata, KeyserverError<GetMetadataError>> ;
+}
+
+#[async_trait]
+impl<S> KeyserverClient for S
+where
+    S: Sync + 'static + Send + Clone,
+    // GetPeers service
+    S: Service<GetPeers, Response = Peers, Error = GetPeersError>,
+    <S as Service<GetPeers>>::Future: Send,
+    // GetMetadata service
+    S: Service<GetMetadata, Response = WrappedMetadata, Error = GetMetadataError>,
+    <S as Service<GetMetadata>>::Future: Send,
+{
+    async fn get_peers(
+        &self,
+        keyserver_url: &str,
+    ) -> Result<Peers, KeyserverError<GetPeersError>> {
+        let full_path = format!("{}/peers", keyserver_url);
+        let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
+        let get_peers = GetPeers(uri);
+
+        let peers = self
+            .clone()
+            .oneshot(get_peers)
+            .await
+            .map_err(KeyserverError::Error)?;
+        Ok(peers)
+    }
+
+    async fn get_metadata(
+        &self,
+        keyserver_url: &str,
+        address: &str,
+    ) -> Result<WrappedMetadata, KeyserverError<GetMetadataError>> {
+        let full_path = format!("{}/keys/{}", keyserver_url, address);
+        let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
+        let get_metadata = GetMetadata(uri);
+
+        let wrapped_metadata = self
+            .clone()
+            .oneshot(get_metadata)
+            .await
+            .map_err(KeyserverError::Error)?;
+        Ok(wrapped_metadata)
     }
 }
