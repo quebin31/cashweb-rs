@@ -8,6 +8,7 @@ use secp256k1::{key::PublicKey, Error as SecpError, Message, Secp256k1, Signatur
 
 include!(concat!(env!("OUT_DIR"), "/wrapper.rs"));
 
+/// The error associated with validation and parsing of the [AuthorizationWrapper](struct.AuthorizationWrapper.html).
 #[derive(Debug)]
 pub enum ValidationError {
     InvalidSignature(SecpError),
@@ -48,6 +49,9 @@ impl fmt::Display for ValidationError {
     }
 }
 
+/// Represents a [AuthorizationWrapper](struct.AuthorizationWrapper.html) post-parsing.
+///
+/// Generic over the payload type.
 pub struct ParsedAuthWrapper<P> {
     pub public_key: PublicKey,
     pub signature: Signature,
@@ -57,22 +61,24 @@ pub struct ParsedAuthWrapper<P> {
 }
 
 impl AuthWrapper {
-    /// Validate the authorization wrapper.
+    /// Validate the [AuthorizationWrapper](struct.AuthorizationWrapper.html).
     pub fn validate(self) -> Result<ParsedAuthWrapper<Vec<u8>>, ValidationError> {
-        self.decode_validate(|x| Ok::<_, Infallible>(x))
+        self.validate_decode(|x| Ok::<_, Infallible>(x))
             .map_err(|err| match err {
                 ValidateDecodeError::Decode(_) => unreachable!(), // This is safe
                 ValidateDecodeError::Validate(err) => err,
             })
     }
 
-    /// Parse and validate the authorization wrapper.
-    pub fn decode_validate<C, F, E>(
+    /// Decode and validate the [AuthorizationWrapper](struct.AuthorizationWrapper.html).
+    ///
+    /// Must supply a function to decode the payload.
+    pub fn validate_decode<P, F, E>(
         self,
         decoder: F,
-    ) -> Result<ParsedAuthWrapper<C>, ValidateDecodeError<E>>
+    ) -> Result<ParsedAuthWrapper<P>, ValidateDecodeError<E>>
     where
-        F: Fn(Vec<u8>) -> Result<C, E>,
+        F: Fn(Vec<u8>) -> Result<P, E>,
     {
         // Parse public key
         let public_key =

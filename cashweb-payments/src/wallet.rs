@@ -74,7 +74,7 @@ where
         }
     }
 
-    /// Removes an output an output from the wallet, else raises an error.
+    /// Removes an output from the wallet, else raises an error.
     pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
         let check_subset = |_: &K, expected_outputs: &Vec<O>| {
             expected_outputs
