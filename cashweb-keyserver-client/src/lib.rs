@@ -158,7 +158,7 @@ where
                 .verify()
                 .map_err(Self::Error::AuthWrapperVerify)?;
 
-            //
+            // Decode metadata
             let metadata = AddressMetadata::decode(&mut parsed_auth_wrapper.payload.as_slice())
                 .map_err(Self::Error::MetadataDecode)?;
 
