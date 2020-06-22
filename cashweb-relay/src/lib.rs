@@ -126,7 +126,7 @@ impl Message {
         Ok(payload_digest)
     }
 
-    /// Parse a [Message](struct.Message.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
+    /// Parse the [Message](struct.Message.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
     ///
     /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields into arrays.
     pub fn parse(self) -> Result<ParsedMessage, ParseError> {
