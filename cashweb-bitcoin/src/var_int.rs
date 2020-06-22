@@ -44,19 +44,19 @@ impl Encodable for VarInt {
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
         match self.0 {
             0..=0xfc => {
-                buf.put_uint(self.0, 1);
+                buf.put_uint_le(self.0, 1);
             }
             0xfd..=0xffff => {
                 buf.put_u8(0xfd);
-                buf.put_uint(self.0, 2);
+                buf.put_uint_le(self.0, 2);
             }
             0x10000..=0xffffffff => {
                 buf.put_u8(0xfe);
-                buf.put_uint(self.0, 4);
+                buf.put_uint_le(self.0, 4);
             }
             _ => {
                 buf.put_u8(0xff);
-                buf.put_u64(self.0);
+                buf.put_u64_le(self.0);
             }
         }
     }
@@ -76,7 +76,7 @@ impl Decodable for VarInt {
                 if buf.remaining() < 8 {
                     return Err(Self::Error::TooShort);
                 }
-                let x = buf.get_u64();
+                let x = buf.get_u64_le();
                 if x < 0x100000000 {
                     Err(Self::Error::NonMinimal)
                 } else {
@@ -87,7 +87,7 @@ impl Decodable for VarInt {
                 if buf.remaining() < 4 {
                     return Err(Self::Error::TooShort);
                 }
-                let x = buf.get_uint(4);
+                let x = buf.get_uint_le(4);
                 if x < 0x10000 {
                     Err(Self::Error::NonMinimal)
                 } else {
@@ -98,7 +98,7 @@ impl Decodable for VarInt {
                 if buf.remaining() < 2 {
                     return Err(Self::Error::TooShort);
                 }
-                let x = buf.get_uint(2);
+                let x = buf.get_uint_le(2);
                 if x < 0xfd {
                     Err(Self::Error::NonMinimal)
                 } else {
@@ -107,5 +107,44 @@ impl Decodable for VarInt {
             }
             n => Ok(VarInt(n.into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode() {
+        let var_int = VarInt(10);
+        let capacity = var_int.encoded_len();
+        let mut raw = Vec::with_capacity(capacity);
+        var_int.encode(&mut raw).unwrap();
+        assert_eq!(raw, vec![10u8]);
+
+        let var_int = VarInt(0xfc);
+        let mut raw = Vec::with_capacity(var_int.encoded_len());
+        var_int.encode_raw(&mut raw);
+        assert_eq!(raw, vec![0xfcu8]);
+
+        let var_int = VarInt(0xfd);
+        let mut raw = Vec::with_capacity(var_int.encoded_len());
+        var_int.encode_raw(&mut raw);
+        assert_eq!(raw, vec![0xfdu8, 0xfd, 0]);
+
+        let var_int = VarInt(0xfff);
+        let mut raw = Vec::with_capacity(var_int.encoded_len());
+        var_int.encode_raw(&mut raw);
+        assert_eq!(raw, vec![0xfdu8, 0xff, 0xf]);
+
+        let var_int = VarInt(0xf0f0f0f);
+        let mut raw = Vec::with_capacity(var_int.encoded_len());
+        var_int.encode_raw(&mut raw);
+        assert_eq!(raw, vec![0xfeu8, 0xf, 0xf, 0xf, 0xf]);
+
+        let var_int = VarInt(0xf0f0f0f0f0e0);
+        let mut raw = Vec::with_capacity(var_int.encoded_len());
+        var_int.encode_raw(&mut raw);
+        assert_eq!(raw, vec![0xffu8, 0xe0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0, 0]);
     }
 }
