@@ -13,6 +13,7 @@ pub use hyper::{
     Uri,
 };
 use prost::{DecodeError, Message as _};
+use secp256k1::key::PublicKey;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
@@ -92,10 +93,14 @@ pub struct GetMetadata(Uri);
 /// The error associated with getting Metadata from a keyserver.
 #[derive(Debug)]
 pub enum GetMetadataError {
-    /// Error while decoding the AddressMetadata.
-    AddressMetadata(ValidateDecodeError<DecodeError>),
-    /// Error while decoding the AuthWrapper.
+    // Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
+    MetadataDecode(DecodeError),
+    /// Error while decoding the [AuthWrapper](struct.AuthWrapper.html).
     AuthWrapperDecode(DecodeError),
+    /// Error while parsing the [AuthWrapper](struct.AuthWrapper.html).
+    AuthWrapperParse(ParseError),
+    /// Error while parsing the [AuthWrapper](struct.AuthWrapper.html).
+    AuthWrapperVerify(VerifyError),
     /// Error while processing the body.
     Body(HyperError),
     /// A connection error occured.
@@ -106,13 +111,17 @@ pub enum GetMetadataError {
     PeeringDisabled,
 }
 
-pub type WrappedMetadata = ParsedAuthWrapper<AddressMetadata>;
+#[derive(Debug)]
+pub struct PairedMetadata {
+    pub public_key: PublicKey,
+    pub metadata: AddressMetadata,
+}
 
 impl<C> Service<GetMetadata> for Client<C>
 where
     C: Connect + Clone + Send + Sync + 'static,
 {
-    type Response = WrappedMetadata;
+    type Response = PairedMetadata;
     type Error = GetMetadataError;
     type Future =
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
@@ -124,19 +133,39 @@ where
     fn call(&mut self, GetMetadata(uri): GetMetadata) -> Self::Future {
         let client = self.inner_client.clone();
         let fut = async move {
+            // Get response
             let response = client.get(uri).await.map_err(Self::Error::Connection)?;
+
+            // Check status code
             match response.status() {
                 StatusCode::OK => (),
                 StatusCode::NOT_IMPLEMENTED => return Err(Self::Error::PeeringDisabled),
                 code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
             }
+
+            // Deserialize and decode body
             let body = response.into_body();
             let buf = aggregate(body).await.map_err(Self::Error::Body)?;
             let auth_wrapper = AuthWrapper::decode(buf).map_err(Self::Error::AuthWrapperDecode)?;
-            let wrapped_metadata = auth_wrapper
-                .decode_validate(|x| AddressMetadata::decode(&mut x.as_slice()))
-                .map_err(Self::Error::AddressMetadata)?;
-            Ok(wrapped_metadata)
+
+            // Parse auth wrapper
+            let parsed_auth_wrapper = auth_wrapper
+                .parse()
+                .map_err(Self::Error::AuthWrapperParse)?;
+
+            // Verify signature
+            parsed_auth_wrapper
+                .verify()
+                .map_err(Self::Error::AuthWrapperVerify)?;
+
+            //
+            let metadata = AddressMetadata::decode(&mut parsed_auth_wrapper.payload.as_slice())
+                .map_err(Self::Error::MetadataDecode)?;
+
+            Ok(PairedMetadata {
+                public_key: parsed_auth_wrapper.public_key,
+                metadata,
+            })
         };
         Box::pin(fut)
     }
@@ -155,16 +184,13 @@ impl<E> From<E> for KeyserverError<E> {
 
 #[async_trait]
 pub trait KeyserverClient {
-    async fn get_peers(
-        &self,
-        keyserver_url: &str,
-    ) -> Result<Peers, KeyserverError<GetPeersError>>;
+    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, KeyserverError<GetPeersError>>;
 
     async fn get_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
-    ) -> Result<WrappedMetadata, KeyserverError<GetMetadataError>> ;
+    ) -> Result<PairedMetadata, KeyserverError<GetMetadataError>>;
 }
 
 #[async_trait]
@@ -175,13 +201,10 @@ where
     S: Service<GetPeers, Response = Peers, Error = GetPeersError>,
     <S as Service<GetPeers>>::Future: Send,
     // GetMetadata service
-    S: Service<GetMetadata, Response = WrappedMetadata, Error = GetMetadataError>,
+    S: Service<GetMetadata, Response = PairedMetadata, Error = GetMetadataError>,
     <S as Service<GetMetadata>>::Future: Send,
 {
-    async fn get_peers(
-        &self,
-        keyserver_url: &str,
-    ) -> Result<Peers, KeyserverError<GetPeersError>> {
+    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, KeyserverError<GetPeersError>> {
         let full_path = format!("{}/peers", keyserver_url);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
         let get_peers = GetPeers(uri);
@@ -198,7 +221,7 @@ where
         &self,
         keyserver_url: &str,
         address: &str,
-    ) -> Result<WrappedMetadata, KeyserverError<GetMetadataError>> {
+    ) -> Result<PairedMetadata, KeyserverError<GetMetadataError>> {
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
         let get_metadata = GetMetadata(uri);
