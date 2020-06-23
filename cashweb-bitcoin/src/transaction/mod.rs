@@ -65,14 +65,13 @@ impl Transaction {
         script_pubkey: &Script,
         sig_hash_type: SignatureHashType,
     ) -> Option<[u8; 32]> {
-        // TODO: Split sig hash?
-
         // Special-case sighash_single bug because this is easy enough.
         if sig_hash_type == SignatureHashType::Single && input_index >= self.outputs.len() {
-            return Some([
+            const UNIT_HASH: [u8; 32] = [
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0,
-            ]); // TODO: Move this to a const
+            ];
+            return Some(UNIT_HASH);
         }
 
         // Construct inputs
