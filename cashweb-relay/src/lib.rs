@@ -39,6 +39,23 @@ pub struct ParsedMessage {
     pub payload: Vec<u8>,
 }
 
+impl ParsedMessage {
+    pub fn into_message(self) -> Message {
+        Message {
+            source_public_key: self.source_public_key.serialize().to_vec(),
+            destination_public_key: self.destination_public_key.serialize().to_vec(),
+            received_time: self.received_time,
+            payload_digest: self.payload_digest.to_vec(),
+            stamp: Some(self.stamp),
+            scheme: self.scheme.into(),
+            salt: self.salt,
+            payload_hmac: self.payload_hmac.to_vec(),
+            payload_size: self.payload_size,
+            payload: self.payload,
+        }
+    }
+}
+
 /// Error associated with [Message](struct.Message.html) parsing.
 #[derive(Debug)]
 pub enum ParseError {
@@ -132,8 +149,8 @@ impl Message {
     pub fn parse(self) -> Result<ParsedMessage, ParseError> {
         // Decode public keys
         let source_public_key =
-            PublicKey::from_slice(&self.source_pub_key).map_err(ParseError::SourcePublicKey)?;
-        let destination_public_key = PublicKey::from_slice(&self.destination_pub_key)
+            PublicKey::from_slice(&self.source_public_key).map_err(ParseError::SourcePublicKey)?;
+        let destination_public_key = PublicKey::from_slice(&self.destination_public_key)
             .map_err(ParseError::DestinationPublicKey)?;
 
         // Calculate payload digest
