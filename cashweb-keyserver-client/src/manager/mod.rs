@@ -7,7 +7,13 @@ use rand::seq::SliceRandom;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
-use crate::client::{services::GetMetadata, KeyserverClient, PairedMetadata};
+use crate::{
+    client::{
+        services::{GetMetadata, GetPeers, PutMetadata},
+        KeyserverClient, PairedMetadata,
+    },
+    models::{AddressMetadata, Peers},
+};
 pub use services::*;
 
 /// KeyserverManager wraps a client and allows sampling and selecting of queries across a set of keyservers.
@@ -66,6 +72,16 @@ pub fn select_auth_wrapper(metadatas: Vec<PairedMetadata>) -> PairedMetadata {
         .unwrap()
 }
 
+/// Aggregate a collection of peers into a single structure.
+pub fn aggregate_peers(peers: Vec<Peers>) -> Peers {
+    let peers = peers
+        .into_iter()
+        .map(move |peer| peer.peers)
+        .flatten()
+        .collect();
+    Peers { peers }
+}
+
 impl<C> KeyserverManager<C>
 where
     C: Send + Clone + 'static,
@@ -74,15 +90,23 @@ where
     <C as Service<(Uri, GetMetadata)>>::Error: fmt::Debug + Send,
     <C as Service<(Uri, GetMetadata)>>::Response: Send + fmt::Debug,
     <C as Service<(Uri, GetMetadata)>>::Future: Send,
+    // GetPeers service
+    C: Service<(Uri, GetPeers), Response = Peers>,
+    <C as Service<(Uri, GetPeers)>>::Error: fmt::Debug + Send,
+    <C as Service<(Uri, GetPeers)>>::Response: Send + fmt::Debug,
+    <C as Service<(Uri, GetPeers)>>::Future: Send,
+    // PutMetadata service
+    C: Service<(Uri, PutMetadata), Response = ()>,
+    <C as Service<(Uri, PutMetadata)>>::Error: fmt::Debug + Send,
+    <C as Service<(Uri, PutMetadata)>>::Response: Send + fmt::Debug,
+    <C as Service<(Uri, PutMetadata)>>::Future: Send,
 {
-    pub async fn sample_metadata(
+    /// Perform a uniform sample of metadata over keyservers and select the latest.
+    pub async fn uniform_sample_metadata(
         &self,
         sample_size: usize,
     ) -> Result<
-        SampleResponse<
-            <C as Service<(Uri, GetMetadata)>>::Response,
-            <C as Service<(Uri, GetMetadata)>>::Error,
-        >,
+        SampleResponse<PairedMetadata, <C as Service<(Uri, GetMetadata)>>::Error>,
         SampleError<<C as Service<(Uri, GetMetadata)>>::Error>,
     > {
         let sampler = |uris: &[Uri]| uniform_random_sampler(uris, sample_size);
@@ -90,6 +114,42 @@ where
             request: GetMetadata,
             sampler,
             selector: select_auth_wrapper,
+        };
+        self.clone().oneshot(sample_request).await
+    }
+
+    /// Collect all peers from keyservers.
+    pub async fn collect_peers(
+        &self,
+    ) -> Result<
+        SampleResponse<Peers, <C as Service<(Uri, GetPeers)>>::Error>,
+        SampleError<<C as Service<(Uri, GetPeers)>>::Error>,
+    > {
+        let sampler = |uris: &[Uri]| uris.to_vec();
+        let sample_request = SampleRequest {
+            request: GetPeers,
+            sampler,
+            selector: aggregate_peers,
+        };
+        self.clone().oneshot(sample_request).await
+    }
+
+    /// Perform a uniform broadcast of metadata over keyservers and select the latest.
+    pub async fn uniform_broadcast_metadata(
+        &self,
+        sample_size: usize,
+        token: String,
+        metadata: AddressMetadata,
+    ) -> Result<
+        SampleResponse<(), <C as Service<(Uri, PutMetadata)>>::Error>,
+        SampleError<<C as Service<(Uri, PutMetadata)>>::Error>,
+    > {
+        let sampler = |uris: &[Uri]| uniform_random_sampler(uris, sample_size);
+        let request = PutMetadata { token, metadata };
+        let sample_request = SampleRequest {
+            request,
+            sampler,
+            selector: |_| (),
         };
         self.clone().oneshot(sample_request).await
     }
