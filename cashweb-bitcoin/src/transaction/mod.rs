@@ -46,7 +46,42 @@ impl SignatureHashType {
     }
 }
 
+/// Calculate the transaction ID. This is the double SHA256 digest of the raw transaction in big-endian encoding.
+#[inline]
+pub fn transaction_id(raw_transaction: &[u8]) -> [u8; 32] {
+    let mut tx_id_le = transaction_id_le(raw_transaction);
+    tx_id_le.reverse();
+    tx_id_le
+}
+
+/// Calculate the transaction ID in little-endian format. This is the double SHA256 digest of the raw transaction.
+///
+/// Note that typically the transaction ID are big-endian encoded.
+#[inline]
+pub fn transaction_id_le(raw_transaction: &[u8]) -> [u8; 32] {
+    let tx_id = digest(&SHA256, digest(&SHA256, &raw_transaction).as_ref());
+    tx_id.as_ref().try_into().unwrap()
+}
+
 impl Transaction {
+    /// Calculate the transaction ID in little-endian format. This is the double SHA256 digest of the raw transaction.
+    ///
+    /// Note that typically the transaction ID are big-endian encoded.
+    #[inline]
+    pub fn transaction_id_le(&self) -> [u8; 32] {
+        let mut raw_tx = Vec::with_capacity(self.encoded_len());
+        self.encode_raw(&mut raw_tx);
+        transaction_id_le(&raw_tx)
+    }
+
+    /// Calculate the transaction ID. This is the double SHA256 digest of the raw transaction in big-endian encoding.
+    #[inline]
+    pub fn transaction_id(&self) -> [u8; 32] {
+        let mut raw_tx = Vec::with_capacity(self.encoded_len());
+        self.encode_raw(&mut raw_tx);
+        transaction_id(&raw_tx)
+    }
+
     /// Calculate input count VarInt.
     fn input_count_varint(&self) -> VarInt {
         VarInt(self.inputs.len() as u64)
