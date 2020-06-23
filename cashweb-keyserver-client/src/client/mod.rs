@@ -4,9 +4,12 @@ use crate::models::*;
 pub use services::*;
 
 use hyper::{http::uri::InvalidUri, Body, Client as HyperClient, Request, Response};
+use secp256k1::key::PublicKey;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
+/// Error associated with sending a request to a keyserver.
+#[derive(Debug)]
 pub enum KeyserverError<E> {
     Uri(InvalidUri),
     Error(E),
@@ -18,13 +21,21 @@ impl<E> From<E> for KeyserverError<E> {
     }
 }
 
+///
 #[derive(Clone, Debug)]
-pub struct Client<S> {
+pub struct PairedMetadata {
+    pub public_key: PublicKey,
+    pub metadata: AddressMetadata,
+}
+
+/// KeyserverClient allows queries to specific keyservers.
+#[derive(Clone, Debug)]
+pub struct KeyserverClient<S> {
     inner_client: S,
 }
 
-impl<S> Client<S> {
-    /// Creates new client from a service.
+impl<S> KeyserverClient<S> {
+    /// Create a new client from a service.
     pub fn from_service(service: S) -> Self {
         Self {
             inner_client: service,
@@ -32,8 +43,8 @@ impl<S> Client<S> {
     }
 }
 
-impl Client<HyperClient<HttpConnector>> {
-    /// Creates a new client.
+impl KeyserverClient<HyperClient<HttpConnector>> {
+    /// Create a new HTTP client.
     pub fn new() -> Self {
         Self {
             inner_client: HyperClient::new(),
@@ -41,7 +52,7 @@ impl Client<HyperClient<HttpConnector>> {
     }
 }
 
-impl<S> Client<S>
+impl<S> KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,

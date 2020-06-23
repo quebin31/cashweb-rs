@@ -13,13 +13,13 @@ pub use hyper::{
     Uri,
 };
 use prost::{DecodeError, Message as _};
-use secp256k1::key::PublicKey;
 use tower_service::Service;
 
-use super::Client;
+use super::{KeyserverClient, PairedMetadata};
 use crate::models::*;
 
 /// Represents a request for the Peers object.
+#[derive(Clone, Debug)]
 pub struct GetPeers;
 
 /// The error associated with getting Peers from a keyserver.
@@ -37,7 +37,7 @@ pub enum GetPeersError<E> {
     PeeringDisabled,
 }
 
-impl<S> Service<(Uri, GetPeers)> for Client<S>
+impl<S> Service<(Uri, GetPeers)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
@@ -78,6 +78,7 @@ where
 }
 
 /// Represents a request for the Metadata object.
+#[derive(Clone, Debug)]
 pub struct GetMetadata;
 
 /// The error associated with getting Metadata from a keyserver.
@@ -101,13 +102,7 @@ pub enum GetMetadataError<E> {
     PeeringDisabled,
 }
 
-#[derive(Debug)]
-pub struct PairedMetadata {
-    pub public_key: PublicKey,
-    pub metadata: AddressMetadata,
-}
-
-impl<S> Service<(Uri, GetMetadata)> for Client<S>
+impl<S> Service<(Uri, GetMetadata)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
@@ -170,7 +165,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum PutMetadataError<E> {
     /// A connection error occured.
     Service(E),
@@ -178,12 +173,13 @@ pub enum PutMetadataError<E> {
     UnexpectedStatusCode(u16),
 }
 
+#[derive(Clone, Debug)]
 pub struct PutMetadata {
     pub token: String,
     pub metadata: AddressMetadata,
 }
 
-impl<S> Service<(Uri, PutMetadata)> for Client<S>
+impl<S> Service<(Uri, PutMetadata)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,

@@ -1,4 +1,4 @@
-use std::{fmt, pin::Pin, sync::Arc};
+use std::{fmt, pin::Pin};
 
 use futures_core::{
     task::{Context, Poll},
@@ -8,34 +8,22 @@ use futures_util::future::{join, join_all};
 use hyper::Uri;
 use tower_service::Service;
 
-use super::Manager;
+use super::{KeyserverManager, SampleError, SampleResponse};
 
-/// Error associated with sending sample requests.
-#[derive(Debug)]
-pub enum SampleError<E> {
-    Poll(E),
-    Sample(Vec<E>),
-}
-
-pub struct SampleResponse<R, E> {
-    pub response: R,
-    pub errors: Vec<(Uri, E)>,
-}
-
-pub struct SampleQuery<T, Sampler, Selector> {
+pub struct SampleRequest<T, Sampler, Selector> {
     pub request: T,
     pub sampler: Sampler,
     pub selector: Selector,
 }
 
-impl<C, T, Sampler, Selector> Service<SampleQuery<T, Sampler, Selector>> for Manager<C>
+impl<C, T, Sampler, Selector> Service<SampleRequest<T, Sampler, Selector>> for KeyserverManager<C>
 where
     T: Send + 'static + Clone,
-    C: Service<(Uri, T)>,
     C: Send + Clone + 'static,
-    <C as Service<(Uri, T)>>::Error: fmt::Debug + Send + 'static,
-    <C as Service<(Uri, T)>>::Response: Send + 'static + fmt::Debug,
-    <C as Service<(Uri, T)>>::Future: Send + 'static,
+    C: Service<(Uri, T)>,
+    <C as Service<(Uri, T)>>::Error: fmt::Debug + Send,
+    <C as Service<(Uri, T)>>::Response: Send + fmt::Debug,
+    <C as Service<(Uri, T)>>::Future: Send,
     Sampler: Fn(&[Uri]) -> Vec<Uri>,
     Selector: Fn(Vec<<C as Service<(Uri, T)>>::Response>) -> <C as Service<(Uri, T)>>::Response
         + Send
@@ -55,22 +43,25 @@ where
 
     fn call(
         &mut self,
-        SampleQuery {
+        SampleRequest {
             request,
             sampler,
             selector,
-        }: SampleQuery<T, Sampler, Selector>,
+        }: SampleRequest<T, Sampler, Selector>,
     ) -> Self::Future {
         let mut inner_client = self.inner_client.clone();
         let sample = sampler(self.uris.as_ref());
 
         let fut = async move {
+            // Collect futures
             let response_futs = sample.into_iter().map(move |uri| {
                 let response_fut = inner_client.call((uri.clone(), request.clone()));
                 let uri_fut = async move { uri };
                 join(uri_fut, response_fut)
             });
             let responses: Vec<(Uri, Result<_, _>)> = join_all(response_futs).await;
+
+            // Seperate successes from errors
             let (oks, errors): (Vec<_>, Vec<_>) =
                 responses.into_iter().partition(|(_, res)| res.is_ok());
             let oks: Vec<_> = oks.into_iter().map(|(_, res)| res.unwrap()).collect();
@@ -78,11 +69,15 @@ where
                 .into_iter()
                 .map(move |(uri, res)| (uri, res.unwrap_err()))
                 .collect();
-            let response = selector(oks);
 
+            // If no successes then return all errors
+            if oks.is_empty() {
+                return Err(SampleError::Sample(errors));
+            }
+
+            let response = selector(oks);
             Ok(SampleResponse { response, errors })
         };
         Box::pin(fut)
     }
 }
-
