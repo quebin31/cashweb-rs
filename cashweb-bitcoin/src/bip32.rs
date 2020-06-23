@@ -148,7 +148,7 @@ impl ExtendedPublicKey {
             parent_fingerprint: self.parent_fingerprint,
             child_number: num,
             public_key: pk,
-            chain_code: chain_code,
+            chain_code,
         })
     }
 }

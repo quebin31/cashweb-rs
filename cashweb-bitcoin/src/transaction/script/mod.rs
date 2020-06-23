@@ -6,7 +6,7 @@ use bytes::BufMut;
 
 /// Represents a script.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Script(Vec<u8>);
+pub struct Script(pub Vec<u8>);
 
 impl Into<Vec<u8>> for Script {
     fn into(self) -> Vec<u8> {
