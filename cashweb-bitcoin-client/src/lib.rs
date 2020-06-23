@@ -1,8 +1,8 @@
 use std::fmt;
 
 use hex::FromHexError;
-pub use json_rpc::clients::http::HttpConnector;
 use json_rpc::prelude::*;
+pub use json_rpc::{clients::http::HttpConnector, prelude::Connect};
 use serde_json::Value;
 
 /// Basic bitcoin JSON-RPC client.
