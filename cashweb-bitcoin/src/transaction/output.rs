@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// The error type associated with `Output` deserialization.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Value is too short.
     ValueTooShort,
@@ -30,7 +30,7 @@ impl fmt::Display for DecodeError {
 }
 
 /// Represents an output.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Output {
     pub value: u64,
     pub script: Script,

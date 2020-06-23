@@ -11,11 +11,11 @@ use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
     Decodable, Encodable,
 };
-use input::{DecodeError as InputDecodeError, Input};
-use output::{DecodeError as OutputDecodeError, Output};
+pub use input::{DecodeError as InputDecodeError, Input};
+pub use output::{DecodeError as OutputDecodeError, Output};
 
 /// Represents a transaction.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Transaction {
     pub version: u32,
     pub inputs: Vec<Input>,
@@ -64,7 +64,7 @@ impl Encodable for Transaction {
 }
 
 /// The error type associated with `Transaction` deserialization.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     VersionTooShort,
     InputCount(VarIntDecodeError),

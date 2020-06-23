@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 use bytes::{Buf, BufMut};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InsufficientCapacity;
 
 /// Provides a common interface for the serialization of bitcoin structures.
@@ -38,7 +38,7 @@ pub trait Decodable: Sized {
 }
 
 /// Enumeration of all standard Bitcoin networks.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
     Mainnet,

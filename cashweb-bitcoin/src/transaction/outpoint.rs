@@ -5,7 +5,7 @@ use bytes::{Buf, BufMut};
 use crate::{Decodable, Encodable};
 
 /// Represents an outpoint.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Outpoint {
     pub tx_id: [u8; 32],
     pub vout: u32,
@@ -25,7 +25,7 @@ impl Encodable for Outpoint {
 }
 
 /// The error type associated with `Outpoint` deserialization.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DecodeError;
 
 impl fmt::Display for DecodeError {

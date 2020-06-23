@@ -5,7 +5,7 @@ use crate::{var_int::VarInt, Encodable};
 use bytes::BufMut;
 
 /// Represents a script.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Script(Vec<u8>);
 
 impl Into<Vec<u8>> for Script {

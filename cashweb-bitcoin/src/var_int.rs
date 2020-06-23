@@ -5,7 +5,7 @@ use bytes::{Buf, BufMut};
 use super::{Decodable, Encodable};
 
 /// The error type associated with `VarInt` deserialization.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     TooShort,
     NonMinimal,
@@ -21,7 +21,7 @@ impl fmt::Display for DecodeError {
 }
 
 /// Represents a variable-length integer.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VarInt(pub u64);
 
 impl Into<u64> for VarInt {

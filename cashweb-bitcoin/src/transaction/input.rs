@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// The error type associated with `Input` deserialization.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     Outpoint(OutpointDecodeError),
     ScriptLen(VarIntDecodeError),
@@ -32,7 +32,7 @@ impl fmt::Display for DecodeError {
 }
 
 /// Represents an input.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Input {
     pub outpoint: Outpoint,
     pub script: Script,
