@@ -143,7 +143,7 @@ impl Transaction {
         let raw_sig_hash = (sig_hash_type as u32).to_le_bytes();
         raw_transaction.extend_from_slice(&raw_sig_hash);
 
-        let pre_sig_hash: [u8; 32] = digest(&SHA256, &raw_transaction)
+        let pre_sig_hash: [u8; 32] = digest(&SHA256, digest(&SHA256, &raw_transaction).as_ref())
             .as_ref()
             .try_into()
             .unwrap();
