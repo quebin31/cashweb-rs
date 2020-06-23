@@ -5,8 +5,8 @@ use futures_core::{
     Future,
 };
 use hyper::{
-    body::aggregate, http::header::AUTHORIZATION, Body, Client as HyperClient, Error as HyperError,
-    Request, Response, StatusCode,
+    body::aggregate, http::header::AUTHORIZATION, Body, Error as HyperError, Request, Response,
+    StatusCode,
 };
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
@@ -16,24 +16,11 @@ use prost::{DecodeError, Message as _};
 use secp256k1::key::PublicKey;
 use tower_service::Service;
 
+use super::Client;
 use crate::models::*;
 
-#[derive(Clone, Debug)]
-pub struct Client<S> {
-    inner_client: S,
-}
-
-impl Client<HyperClient<HttpConnector>> {
-    /// Creates a new client.
-    pub fn new() -> Self {
-        Self {
-            inner_client: HyperClient::new(),
-        }
-    }
-}
-
 /// Represents a request for the Peers object.
-pub struct GetPeers(pub Uri);
+pub struct GetPeers;
 
 /// The error associated with getting Peers from a keyserver.
 #[derive(Debug)]
@@ -50,7 +37,7 @@ pub enum GetPeersError<E> {
     PeeringDisabled,
 }
 
-impl<S> Service<GetPeers> for Client<S>
+impl<S> Service<(Uri, GetPeers)> for Client<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
@@ -67,7 +54,7 @@ where
             .map_err(GetPeersError::Service)
     }
 
-    fn call(&mut self, GetPeers(uri): GetPeers) -> Self::Future {
+    fn call(&mut self, (uri, _): (Uri, GetPeers)) -> Self::Future {
         let mut client = self.inner_client.clone();
         let http_request = Request::builder().uri(uri).body(Body::empty()).unwrap(); // This is safe
 
@@ -91,7 +78,7 @@ where
 }
 
 /// Represents a request for the Metadata object.
-pub struct GetMetadata(pub Uri);
+pub struct GetMetadata;
 
 /// The error associated with getting Metadata from a keyserver.
 #[derive(Debug)]
@@ -120,7 +107,7 @@ pub struct PairedMetadata {
     pub metadata: AddressMetadata,
 }
 
-impl<S> Service<GetMetadata> for Client<S>
+impl<S> Service<(Uri, GetMetadata)> for Client<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
@@ -137,7 +124,7 @@ where
             .map_err(GetMetadataError::Service)
     }
 
-    fn call(&mut self, GetMetadata(uri): GetMetadata) -> Self::Future {
+    fn call(&mut self, (uri, _): (Uri, GetMetadata)) -> Self::Future {
         let mut client = self.inner_client.clone();
         let http_request = Request::builder().uri(uri).body(Body::empty()).unwrap(); // This is safe
         let fut = async move {
@@ -192,12 +179,11 @@ pub enum PutMetadataError<E> {
 }
 
 pub struct PutMetadata {
-    pub uri: Uri,
     pub token: String,
     pub metadata: AddressMetadata,
 }
 
-impl<S> Service<PutMetadata> for Client<S>
+impl<S> Service<(Uri, PutMetadata)> for Client<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
@@ -214,7 +200,7 @@ where
             .map_err(PutMetadataError::Service)
     }
 
-    fn call(&mut self, request: PutMetadata) -> Self::Future {
+    fn call(&mut self, (uri, request): (Uri, PutMetadata)) -> Self::Future {
         let mut client = self.inner_client.clone();
 
         // Construct body
@@ -222,7 +208,7 @@ where
         request.metadata.encode(&mut body).unwrap();
 
         let http_request = Request::builder()
-            .uri(request.uri)
+            .uri(uri)
             .header(AUTHORIZATION, request.token)
             .body(Body::from(body))
             .unwrap(); // This is safe
