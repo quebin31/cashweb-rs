@@ -3,9 +3,10 @@ pub mod outpoint;
 pub mod output;
 pub mod script;
 
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 use bytes::{Buf, BufMut};
+use ring::digest::{digest, SHA256};
 
 use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
@@ -13,6 +14,7 @@ use crate::{
 };
 pub use input::{DecodeError as InputDecodeError, Input};
 pub use output::{DecodeError as OutputDecodeError, Output};
+pub use script::Script;
 
 /// Represents a transaction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -23,20 +25,138 @@ pub struct Transaction {
     pub lock_time: u32,
 }
 
+/// Enumerates the different signatuer hash types.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SignatureHashType {
+    All = 0x01,
+    None = 0x02,
+    Single = 0x03,
+    AnyoneCanPayAll = 0x81,
+    AnyoneCanPayNone = 0x82,
+    AnyoneCanPaySingle = 0x83,
+}
+
+impl SignatureHashType {
+    #[inline]
+    pub fn is_anyone_can_pay(&self) -> bool {
+        match self {
+            Self::All | Self::None | Self::Single => true,
+            _ => false,
+        }
+    }
+}
+
 impl Transaction {
-    fn input_len_varint(&self) -> VarInt {
+    /// Calculate input count VarInt.
+    fn input_count_varint(&self) -> VarInt {
         VarInt(self.inputs.len() as u64)
     }
 
-    fn output_len_varint(&self) -> VarInt {
+    /// Calculate output count length
+    fn output_count_varint(&self) -> VarInt {
         VarInt(self.outputs.len() as u64)
+    }
+
+    /// Calculate signature hash of a specific input.
+    #[inline]
+    pub fn signature_hash(
+        &self,
+        input_index: usize,
+        script_pubkey: &Script,
+        sig_hash_type: SignatureHashType,
+    ) -> Option<[u8; 32]> {
+        // TODO: Split sig hash?
+
+        // Special-case sighash_single bug because this is easy enough.
+        if sig_hash_type == SignatureHashType::Single && input_index >= self.outputs.len() {
+            return Some([
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ]); // TODO: Move this to a const
+        }
+
+        // Construct inputs
+        let inputs = if sig_hash_type.is_anyone_can_pay() {
+            let input = self.inputs.get(input_index)?.clone();
+            vec![Input {
+                outpoint: input.outpoint,
+                script: script_pubkey.clone(),
+                sequence: input.sequence,
+            }]
+        } else {
+            self.inputs
+                .iter()
+                .enumerate()
+                .map(|(local_index, input)| {
+                    let sequence = if local_index != input_index
+                        && (sig_hash_type == SignatureHashType::Single
+                            || sig_hash_type == SignatureHashType::None)
+                    {
+                        0
+                    } else {
+                        input.sequence
+                    };
+                    let script = if local_index == input_index {
+                        script_pubkey.clone()
+                    } else {
+                        Script::default()
+                    };
+                    Input {
+                        outpoint: input.outpoint.clone(),
+                        sequence,
+                        script,
+                    }
+                })
+                .collect()
+        };
+
+        // Construct outputs
+        let outputs = match sig_hash_type {
+            SignatureHashType::All => self.outputs.clone(),
+            SignatureHashType::Single => self
+                .outputs
+                .iter()
+                .take(input_index + 1)
+                .enumerate()
+                .map(|(local_index, output)| {
+                    if local_index == input_index {
+                        output.clone()
+                    } else {
+                        Output::default()
+                    }
+                })
+                .collect(),
+            SignatureHashType::None => vec![],
+            _ => unreachable!(), // This is safe because we return earlier in these cases
+        };
+
+        // Construct transaction
+        let transaction = Transaction {
+            version: self.version,
+            lock_time: self.lock_time,
+            inputs,
+            outputs,
+        };
+
+        // Serialize transaction
+        let mut raw_transaction = Vec::with_capacity(transaction.encoded_len() + 4);
+        transaction.encode_raw(&mut raw_transaction);
+        let raw_sig_hash = (sig_hash_type as u32).to_le_bytes();
+        raw_transaction.extend_from_slice(&raw_sig_hash);
+
+        let pre_sig_hash: [u8; 32] = digest(&SHA256, &raw_transaction)
+            .as_ref()
+            .try_into()
+            .unwrap();
+
+        Some(pre_sig_hash)
     }
 }
 
 impl Encodable for Transaction {
     #[inline]
     fn encoded_len(&self) -> usize {
-        let input_length_varint_length = self.input_len_varint().encoded_len();
+        let input_length_varint_length = self.input_count_varint().encoded_len();
         let input_total_length: usize = self.inputs.iter().map(|input| input.encoded_len()).sum();
         let output_length_varint_length = VarInt(self.outputs.len() as u64).encoded_len();
         let output_total_length: usize =
@@ -51,11 +171,11 @@ impl Encodable for Transaction {
     #[inline]
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
         buf.put_u32(self.version);
-        self.input_len_varint().encode_raw(buf);
+        self.input_count_varint().encode_raw(buf);
         for input in &self.inputs {
             input.encode_raw(buf);
         }
-        self.output_len_varint().encode_raw(buf);
+        self.output_count_varint().encode_raw(buf);
         for output in &self.outputs {
             output.encode_raw(buf);
         }
