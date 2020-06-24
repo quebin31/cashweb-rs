@@ -126,7 +126,7 @@ pub fn verify_stamp(
             let child_key = tx_child
                 .derive_public_child(&context, child_number)
                 .unwrap(); // TODO: Double check this is safe
-            let raw_child_key = child_key.public_key().serialize();
+            let raw_child_key = child_key.get_public_key().serialize();
             let sha256_digest = digest(&SHA256, &raw_child_key);
             let hash160_digest = Ripemd160::digest(sha256_digest.as_ref());
 
@@ -140,4 +140,56 @@ pub fn verify_stamp(
     }
 
     Ok(txs)
+}
+
+#[derive(Debug)]
+pub enum StampKeyError {
+    SharedKey(SharedKeyError),
+    Addition(SecpError),
+    ChildNumberOverflow,
+}
+
+/// Construct stamp private key.
+pub fn create_stamp_private_keys<TV, V>(
+    mut private_key: SecretKey,
+    payload_digest: &[u8; 32],
+    output_profile: TV,
+) -> Result<Vec<Vec<SecretKey>>, StampKeyError>
+where
+    for<'a> &'a TV: IntoIterator<Item = &'a (u32, V)>,
+    for<'a> &'a V: IntoIterator<Item = &'a u32>,
+{
+    let context = Secp256k1::signing_only();
+    private_key
+        .add_assign(payload_digest.as_ref())
+        .map_err(StampKeyError::Addition)?;
+    let master_private_key = ExtendedPrivateKey::new_master(private_key, *payload_digest);
+
+    // Create intermediate child
+    let intermediate_child = master_private_key.derive_private_path(
+        &context,
+        &[
+            ChildNumber::from_normal_idx(44).unwrap(),
+            ChildNumber::from_normal_idx(145).unwrap(),
+        ],
+    );
+    output_profile
+        .into_iter()
+        .map(|(tx_num, vouts)| {
+            // Create intermediate child
+            let child_number = ChildNumber::from_normal_idx(*tx_num)
+                .map_err(|_| StampKeyError::ChildNumberOverflow)?;
+            let tx_child = intermediate_child.derive_private_child(&context, child_number);
+            let private_keys_inner: Result<Vec<_>, _> = vouts
+                .into_iter()
+                .map(|vout| {
+                    let child_number = ChildNumber::from_normal_idx(*vout)
+                        .map_err(|_| StampKeyError::ChildNumberOverflow)?;
+                    let tx_child = tx_child.derive_private_child(&context, child_number);
+                    Ok(tx_child.into_private_key())
+                })
+                .collect();
+            private_keys_inner
+        })
+        .collect()
 }

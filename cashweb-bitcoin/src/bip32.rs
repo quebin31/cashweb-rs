@@ -3,8 +3,6 @@ use std::convert::TryInto;
 use ring::hmac::{sign as hmac, Key as HmacKey, HMAC_SHA512};
 use secp256k1::{Error as SecpError, PublicKey, Secp256k1, SecretKey};
 
-use crate::Network;
-
 /// A BIP32 error
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Error {
@@ -74,8 +72,6 @@ impl From<u32> for ChildNumber {
 
 #[derive(Clone, Debug)]
 pub struct ExtendedPublicKey {
-    child_number: ChildNumber,
-    depth: u8,
     public_key: PublicKey,
     chain_code: [u8; 32],
 }
@@ -84,15 +80,21 @@ impl ExtendedPublicKey {
     /// Construct a new master public key.
     pub fn new_master(public_key: PublicKey, chain_code: [u8; 32]) -> Self {
         Self {
-            child_number: ChildNumber::from(0),
-            depth: 0,
             public_key,
             chain_code,
         }
     }
 
-    pub fn public_key(&self) -> &PublicKey {
+    pub fn get_public_key(&self) -> &PublicKey {
         &self.public_key
+    }
+
+    pub fn into_public_key(self) -> PublicKey {
+        self.public_key
+    }
+
+    pub fn into_parts(&self) -> (&PublicKey, &[u8; 32]) {
+        (&self.public_key, &self.chain_code)
     }
 
     /// Attempts to derive an extended public key from a path.
@@ -134,14 +136,13 @@ impl ExtendedPublicKey {
 
         let private_key = secp256k1::SecretKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
         let chain_code: [u8; 32] = hmac_result.as_ref()[32..].try_into().unwrap(); // This is safe
-        let mut pk = self.public_key.clone();
-        pk.add_exp_assign(secp, &private_key[..])
+        let mut public_key = self.public_key.clone();
+        public_key
+            .add_exp_assign(secp, &private_key[..])
             .map_err(DeriveError::InvalidTweak)?;
 
         Ok(ExtendedPublicKey {
-            child_number,
-            depth: self.depth + 1,
-            public_key: pk,
+            public_key,
             chain_code,
         })
     }
@@ -149,8 +150,6 @@ impl ExtendedPublicKey {
 
 #[derive(Copy, Clone)]
 pub struct ExtendedPrivateKey {
-    child_number: ChildNumber,
-    depth: u8,
     private_key: SecretKey,
     chain_code: [u8; 32],
 }
@@ -159,16 +158,22 @@ impl ExtendedPrivateKey {
     /// Construct a new master private key.
     pub fn new_master(private_key: SecretKey, chain_code: [u8; 32]) -> Self {
         ExtendedPrivateKey {
-            child_number: ChildNumber::from(0),
-            depth: 0,
             private_key,
             chain_code,
         }
     }
 
     /// Get private key.
-    pub fn private_key(&self) -> &SecretKey {
+    pub fn get_private_key(&self) -> &SecretKey {
         &self.private_key
+    }
+
+    pub fn into_private_key(self) -> SecretKey {
+        self.private_key
+    }
+
+    pub fn into_parts(&self) -> (&SecretKey, &[u8; 32]) {
+        (&self.private_key, &self.chain_code)
     }
 
     /// Attempts to derive an extended private key from a path.
@@ -225,8 +230,6 @@ impl ExtendedPrivateKey {
         // Construct new extended private key
         let chain_code = hmac_result.as_ref()[32..].try_into().unwrap(); // This is safe
         ExtendedPrivateKey {
-            depth: self.depth + 1,
-            child_number,
             private_key,
             chain_code,
         }
