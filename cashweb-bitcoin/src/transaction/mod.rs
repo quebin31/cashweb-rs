@@ -97,7 +97,7 @@ impl Transaction {
     pub fn signature_hash(
         &self,
         input_index: usize,
-        script_pubkey: &Script,
+        script_pubkey: Script,
         sig_hash_type: SignatureHashType,
     ) -> Option<[u8; 32]> {
         // Special-case sighash_single bug because this is easy enough.
@@ -114,7 +114,7 @@ impl Transaction {
             let input = self.inputs.get(input_index)?.clone();
             vec![Input {
                 outpoint: input.outpoint,
-                script: script_pubkey.clone(),
+                script: script_pubkey,
                 sequence: input.sequence,
             }]
         } else {

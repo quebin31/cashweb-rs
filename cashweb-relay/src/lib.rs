@@ -8,7 +8,7 @@ use aes::{
     block_cipher::generic_array::{typenum::U16, GenericArray},
     Aes128,
 };
-use bitcoin::{transaction::Transaction, Network};
+use bitcoin::transaction::Transaction;
 use block_modes::{block_padding::Pkcs7, BlockMode, BlockModeError, Cbc};
 use prost::{DecodeError as MessageDecodeError, Message as _};
 use ring::{
@@ -302,9 +302,9 @@ impl ParsedMessage {
 
     /// Verify the stamp on the message and return the decoded transactions.
     #[inline]
-    pub fn verify_stamp(&self, network: Network) -> Result<Vec<Transaction>, StampError> {
+    pub fn verify_stamp(&self) -> Result<Vec<Transaction>, StampError> {
         self.stamp
-            .verify_stamp(&self.payload_digest, &self.destination_public_key, network)
+            .verify_stamp(&self.payload_digest, &self.destination_public_key)
     }
 
     /// Verify the stamp, authenticate the HMAC payload, and then decrypt and decode the payload.
@@ -316,10 +316,9 @@ impl ParsedMessage {
         private_key: &[u8],
         auth_salt: &[u8],
         info: &[&[u8]],
-        network: Network,
     ) -> Result<DecryptResult, DecryptError> {
         // Verify stamp
-        let txs = self.verify_stamp(network).map_err(DecryptError::Stamp)?;
+        let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
 
         // Create shared key
         let shared_key = self
@@ -354,10 +353,9 @@ impl ParsedMessage {
         private_key: &[u8],
         auth_salt: &[u8],
         info: &[&[u8]],
-        network: Network,
     ) -> Result<DecryptResult, DecryptError> {
         // Verify stamp
-        let txs = self.verify_stamp(network).map_err(DecryptError::Stamp)?;
+        let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
 
         // Create shared key
         let shared_key = self

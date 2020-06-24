@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use ring::hmac::{sign as hmac, Key as HmacKey, HMAC_SHA512};
-use secp256k1::{Error as SecpError, PublicKey, Secp256k1};
+use secp256k1::{Error as SecpError, PublicKey, Secp256k1, SecretKey};
 
 use crate::Network;
 
@@ -76,21 +76,17 @@ impl From<u32> for ChildNumber {
 pub struct ExtendedPublicKey {
     child_number: ChildNumber,
     depth: u8,
-    parent_fingerprint: u32,
     public_key: PublicKey,
-    network: Network,
     chain_code: [u8; 32],
 }
 
 impl ExtendedPublicKey {
     /// Construct a new master public key.
-    pub fn new_master(public_key: PublicKey, network: Network, chain_code: [u8; 32]) -> Self {
+    pub fn new_master(public_key: PublicKey, chain_code: [u8; 32]) -> Self {
         Self {
             child_number: ChildNumber::from(0),
             depth: 0,
-            parent_fingerprint: 0,
             public_key,
-            network,
             chain_code,
         }
     }
@@ -111,24 +107,24 @@ impl ExtendedPublicKey {
         for<'a> &'a P: IntoIterator<Item = &'a ChildNumber>,
     {
         let mut path_iter = path.into_iter();
-        let mut pk: ExtendedPublicKey = if let Some(num) = path_iter.next() {
+        let mut public_key = if let Some(num) = path_iter.next() {
             self.derive_public_child(secp, *num)?
         } else {
             return Ok(self.clone());
         };
         for num in path {
-            pk = pk.derive_public_child(secp, *num)?
+            public_key = public_key.derive_public_child(secp, *num)?
         }
-        Ok(pk)
+        Ok(public_key)
     }
 
     /// Derive child public key.
     pub fn derive_public_child<C: secp256k1::Verification>(
         &self,
         secp: &Secp256k1<C>,
-        num: ChildNumber,
+        child_number: ChildNumber,
     ) -> Result<ExtendedPublicKey, DeriveError> {
-        let index = match num {
+        let index = match child_number {
             ChildNumber::Hardened(_) => return Err(DeriveError::HardenedDeriveError),
             ChildNumber::Normal(index) => index,
         };
@@ -143,12 +139,96 @@ impl ExtendedPublicKey {
             .map_err(DeriveError::InvalidTweak)?;
 
         Ok(ExtendedPublicKey {
-            network: self.network,
+            child_number,
             depth: self.depth + 1,
-            parent_fingerprint: self.parent_fingerprint,
-            child_number: num,
             public_key: pk,
             chain_code,
         })
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct ExtendedPrivateKey {
+    child_number: ChildNumber,
+    depth: u8,
+    private_key: SecretKey,
+    chain_code: [u8; 32],
+}
+
+impl ExtendedPrivateKey {
+    /// Construct a new master private key.
+    pub fn new_master(private_key: SecretKey, chain_code: [u8; 32]) -> Self {
+        ExtendedPrivateKey {
+            child_number: ChildNumber::from(0),
+            depth: 0,
+            private_key,
+            chain_code,
+        }
+    }
+
+    /// Get private key.
+    pub fn private_key(&self) -> &SecretKey {
+        &self.private_key
+    }
+
+    /// Attempts to derive an extended private key from a path.
+    ///
+    /// The `path` argument can be both of type `DerivationPath` or `Vec<ChildNumber>`.
+    pub fn derive_private_path<C: secp256k1::Signing, P>(
+        &self,
+        secp: &Secp256k1<C>,
+        path: &P,
+    ) -> ExtendedPrivateKey
+    where
+        for<'a> &'a P: IntoIterator<Item = &'a ChildNumber>,
+    {
+        let mut path_iter = path.into_iter();
+        let mut private_key = if let Some(num) = path_iter.next() {
+            self.derive_private_child(secp, *num)
+        } else {
+            return self.clone();
+        };
+        for num in path {
+            private_key = private_key.derive_private_child(secp, *num);
+        }
+        private_key
+    }
+
+    /// Derive child private key.
+    pub fn derive_private_child<C: secp256k1::Signing>(
+        &self,
+        secp: &Secp256k1<C>,
+        child_number: ChildNumber,
+    ) -> ExtendedPrivateKey {
+        // Calculate HMAC
+        let key = HmacKey::new(HMAC_SHA512, &self.chain_code);
+        let hmac_result = match child_number {
+            ChildNumber::Normal(index) => {
+                // Non-hardened key: compute public data and use that
+                let raw_public_key =
+                    PublicKey::from_secret_key(secp, &self.private_key).serialize();
+                let data = [&raw_public_key[..], &index.to_be_bytes()].concat();
+                hmac(&key, &data)
+            }
+            ChildNumber::Hardened(index) => {
+                // Hardened key: use only secret data to prevent public derivation
+                let data = [&[0], &self.private_key[..], &index.to_be_bytes()].concat();
+                hmac(&key, &data)
+            }
+        };
+
+        // Construct new private key
+        let mut private_key =
+            secp256k1::SecretKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
+        private_key.add_assign(&self.private_key[..]).unwrap(); // This is safe
+
+        // Construct new extended private key
+        let chain_code = hmac_result.as_ref()[32..].try_into().unwrap(); // This is safe
+        ExtendedPrivateKey {
+            depth: self.depth + 1,
+            child_number,
+            private_key,
+            chain_code,
+        }
     }
 }

@@ -3,16 +3,20 @@ use std::fmt;
 use bitcoin::{
     bip32::*,
     transaction::{DecodeError as TransactionDecodeError, Transaction},
-    Decodable, Network,
+    Decodable,
 };
 use ring::digest::{digest, SHA256};
 use ripemd160::{Digest, Ripemd160};
 use secp256k1::{
     key::{PublicKey, SecretKey},
-    Secp256k1,
+    Error as SecpError, Secp256k1,
 };
 
-pub use crate::models::{stamp::StampType, Stamp, StampOutpoints};
+pub use crate::{
+    create_shared_key,
+    models::{stamp::StampType, Stamp, StampOutpoints},
+    SharedKeyError,
+};
 
 /// Error associated with verification of stamps.
 #[derive(Debug)]
@@ -50,14 +54,12 @@ impl Stamp {
         &self,
         payload_digest: &[u8; 32],
         destination_public_key: &PublicKey,
-        network: Network,
     ) -> Result<Vec<Transaction>, StampError> {
         verify_stamp(
             &self.stamp_outpoints,
             payload_digest,
             destination_public_key,
             StampType::from_i32(self.stamp_type).ok_or(StampError::UnsupportedStampType)?, // This is safe
-            network,
         )
     }
 }
@@ -69,20 +71,19 @@ pub fn verify_stamp(
     payload_digest: &[u8; 32],
     destination_public_key: &PublicKey,
     stamp_type: StampType,
-    network: Network,
 ) -> Result<Vec<Transaction>, StampError> {
     if stamp_type == StampType::None {
         return Err(StampError::NoneType);
     }
 
     // Calculate master pubkey
-    let payload_secret_key = SecretKey::from_slice(&payload_digest.as_ref()).unwrap(); // TODO: Double check this is safe
+    let payload_secret_key = SecretKey::from_slice(&payload_digest.as_ref()).unwrap(); // This is safe
     let payload_public_key =
         PublicKey::from_secret_key(&Secp256k1::signing_only(), &payload_secret_key);
     let combined_key = destination_public_key
         .combine(&payload_public_key)
         .map_err(|_| StampError::DegenerateCombination)?;
-    let master_pk = ExtendedPublicKey::new_master(combined_key, network, *payload_digest);
+    let master_pk = ExtendedPublicKey::new_master(combined_key, *payload_digest);
 
     // Calculate intermediate child
     let intermediate_child = master_pk
