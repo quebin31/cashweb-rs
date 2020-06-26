@@ -3,7 +3,8 @@ pub mod services;
 use crate::models::*;
 pub use services::*;
 
-use hyper::{http::uri::InvalidUri, Body, Client as HyperClient, Request, Response};
+use async_trait::async_trait;
+use hyper::{http::uri::InvalidUri, Client as HyperClient};
 use secp256k1::key::PublicKey;
 use tower_service::Service;
 use tower_util::ServiceExt;
@@ -21,7 +22,7 @@ impl<E> From<E> for KeyserverError<E> {
     }
 }
 
-///
+/// The AddressMetadata paired with its PublicKey.
 #[derive(Clone, Debug)]
 pub struct PairedMetadata {
     pub public_key: PublicKey,
@@ -52,17 +53,47 @@ impl KeyserverClient<HyperClient<HttpConnector>> {
     }
 }
 
-impl<S> KeyserverClient<S>
-where
-    S: Service<Request<Body>, Response = Response<Body>>,
-    S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
-{
+#[async_trait]
+pub trait GetPeersInterface {
+    type Error;
     /// Get peers from a keyserver.
-    pub async fn get_peers(
+    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, Self::Error>;
+}
+
+#[async_trait]
+pub trait GetMetadataInterface {
+    type Error;
+
+    async fn get_metadata(
         &self,
         keyserver_url: &str,
-    ) -> Result<Peers, KeyserverError<<Self as Service<(Uri, GetPeers)>>::Error>> {
+        address: &str,
+    ) -> Result<PairedMetadata, Self::Error>;
+}
+
+#[async_trait]
+pub trait PutMetadataInterface {
+    type Error;
+
+    async fn put_metadata(
+        &self,
+        keyserver_url: &str,
+        address: &str,
+        metadata: AddressMetadata,
+        token: String,
+    ) -> Result<(), Self::Error>;
+}
+
+#[async_trait]
+impl<S> GetPeersInterface for S
+where
+    S: Service<(Uri, GetPeers), Response = Peers>,
+    S: Sync + Clone + Send + 'static,
+    S::Future: Send + Sync + 'static,
+{
+    type Error = KeyserverError<S::Error>;
+
+    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, Self::Error> {
         // Construct URI
         let full_path = format!("{}/peers", keyserver_url);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
@@ -75,9 +106,19 @@ where
             .await
             .map_err(KeyserverError::Error)
     }
+}
+
+#[async_trait]
+impl<S> GetMetadataInterface for S
+where
+    S: Service<(Uri, GetMetadata), Response = PairedMetadata>,
+    S: Sync + Clone + Send + 'static,
+    S::Future: Send + Sync + 'static,
+{
+    type Error = KeyserverError<S::Error>;
 
     /// Get metadata from a keyserver.
-    pub async fn get_metadata(
+    async fn get_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
@@ -94,15 +135,25 @@ where
             .await
             .map_err(KeyserverError::Error)
     }
+}
+
+#[async_trait]
+impl<S> PutMetadataInterface for S
+where
+    S: Service<(Uri, PutMetadata), Response = ()>,
+    S: Sync + Clone + Send + 'static,
+    S::Future: Send + Sync + 'static,
+{
+    type Error = KeyserverError<S::Error>;
 
     /// Put metadata to a keyserver.
-    pub async fn put_metadata(
+    async fn put_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
         metadata: AddressMetadata,
         token: String,
-    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutMetadata)>>::Error>> {
+    ) -> Result<(), Self::Error> {
         // Construct URI
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
