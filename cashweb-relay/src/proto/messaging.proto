@@ -8,7 +8,7 @@ message Header {
 }
 
 // Entry is an individual piece of structured data.
-message Entry {
+message MessageEntry {
   // Informs the wallet what to do with this payload.
   string kind = 1;
   // The headers provide some extra metadata about the field that
@@ -25,8 +25,7 @@ message Payload {
   // Timestamp provided by sender.
   int64 timestamp = 1;
   // The entries, containing body of the payload.
-  repeated Entry entries = 2;
-  // Possibly other stuff relevant to the whole message later
+  repeated MessageEntry entries = 2;
 }
 
 // A stamp transaction paired with a list of vouts identifying to stamp outputs.
@@ -156,4 +155,28 @@ message PayloadPage {
   bytes start_digest = 4;
   // The payload digest of the latest payload in the page.
   bytes end_digest = 5;
+}
+
+// Entry is an individual piece of structured data provided by wallet authors.
+message ProfileEntry {
+  // Kind is a hint to wallets as to what type of data to deserialize from the
+  // metadata field.
+  string kind = 1;
+  // The headers is excess metadata that may be useful to a wallet.
+  repeated Header headers = 2;
+  // Body of the metadata field.
+  bytes entry_data = 3;
+}
+
+// A profile attached to an address.
+message Profile {
+  // Timestamp allows servers to determine which version of the data is the most
+  // recent. Given in milliseconds.
+  int64 timestamp = 1;
+  // TTL tells us how long this entry should exist before being considered
+  // invalid. Given in milliseconds.
+  int64 ttl = 2;
+  // User specified data.  Presumably some conventional data determined by
+  // wallet authors.
+  repeated ProfileEntry entries = 3;
 }

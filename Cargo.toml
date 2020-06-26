@@ -7,5 +7,6 @@ members = [
     "cashweb-keyserver-client",
     "cashweb-payments",
     "cashweb-relay",
+    "cashweb-relay-client",
     "cashweb-token"
 ]

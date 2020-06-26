@@ -17,4 +17,5 @@ bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client"
 keyserver-client = { version = "0.1.0-alpha.0", package = "cashweb-keyserver-client", path = "../cashweb-keyserver-client" }
 payments = { version = "0.1.0-alpha.0", package = "cashweb-payments", path = "../cashweb-payments" }
 relay = { version = "0.1.0-alpha.0", package = "cashweb-relay", path = "../cashweb-relay" }
+relay-client = { version = "0.1.0-alpha.0", package = "cashweb-relay-client", path = "../cashweb-relay-client" }
 token = { version = "0.1.0-alpha.2", package = "cashweb-token", path = "../cashweb-token" }

@@ -18,7 +18,7 @@ use ring::{
 use secp256k1::{key::PublicKey, Error as SecpError, Secp256k1};
 
 pub use crate::models::{
-    message::EncryptionScheme, Message, MessagePage, MessageSet, Payload, PayloadPage,
+    message::EncryptionScheme, Message, MessagePage, MessageSet, Payload, PayloadPage, Profile,
 };
 use stamp::*;
 
