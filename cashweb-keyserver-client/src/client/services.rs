@@ -1,9 +1,10 @@
-use std::pin::Pin;
+use std::{fmt, pin::Pin};
 
 use futures_core::{
     task::{Context, Poll},
     Future,
 };
+use futures_util::future::{join, join_all};
 use hyper::{
     body::aggregate, http::header::AUTHORIZATION, http::Method, Body, Error as HyperError, Request,
     Response, StatusCode,
@@ -17,6 +18,9 @@ use tower_service::Service;
 
 use super::{KeyserverClient, PairedMetadata};
 use crate::models::*;
+
+type FutResponse<Response, Error> =
+    Pin<Box<dyn Future<Output = Result<Response, Error>> + 'static + Send>>;
 
 /// Represents a request for the Peers object.
 #[derive(Clone, Debug)]
@@ -45,8 +49,7 @@ where
 {
     type Response = Peers;
     type Error = GetPeersError<S::Error>;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
+    type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
@@ -116,8 +119,7 @@ where
 {
     type Response = PairedMetadata;
     type Error = GetMetadataError<S::Error>;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
+    type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
@@ -208,8 +210,7 @@ where
 {
     type Response = ();
     type Error = PutMetadataError<S::Error>;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
+    type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
@@ -246,6 +247,65 @@ where
             }
 
             Ok(())
+        };
+        Box::pin(fut)
+    }
+}
+
+pub struct SampleRequest<T> {
+    pub uris: Vec<Uri>,
+    pub request: T,
+}
+
+/// Error associated with sending sample requests.
+#[derive(Debug)]
+pub enum SampleError<E> {
+    Poll(E),
+    Sample(Vec<(Uri, E)>),
+}
+
+impl<S, T> Service<SampleRequest<T>> for KeyserverClient<S>
+where
+    T: Send + 'static + Clone + Sized,
+    S: Send + Clone + 'static,
+    Self: Service<(Uri, T)>,
+    <Self as Service<(Uri, T)>>::Response: Send + fmt::Debug,
+    <Self as Service<(Uri, T)>>::Error: fmt::Debug + Send,
+    <Self as Service<(Uri, T)>>::Future: Send,
+{
+    type Response = Vec<(
+        Uri,
+        Result<<Self as Service<(Uri, T)>>::Response, <Self as Service<(Uri, T)>>::Error>,
+    )>;
+    type Error = SampleError<<Self as Service<(Uri, T)>>::Error>;
+    type Future = FutResponse<Self::Response, Self::Error>;
+
+    fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready(context).map_err(SampleError::Poll)
+    }
+
+    fn call(&mut self, SampleRequest { uris, request }: SampleRequest<T>) -> Self::Future {
+        let mut inner_client = self.clone();
+
+        let fut = async move {
+            // Collect futures
+            let response_futs = uris.into_iter().map(move |uri| {
+                let response_fut = inner_client.call((uri.clone(), request.clone()));
+                let uri_fut = async move { uri };
+                join(uri_fut, response_fut)
+            });
+            let responses: Vec<(Uri, Result<_, _>)> = join_all(response_futs).await;
+
+            // If no successes then return all errors
+            if responses.iter().any(|(_, res)| res.is_ok()) {
+                let errors = responses
+                    .into_iter()
+                    .map(|(uri, result)| (uri, result.err().unwrap()))
+                    .collect();
+                return Err(SampleError::Sample(errors));
+            }
+
+            Ok(responses)
         };
         Box::pin(fut)
     }
