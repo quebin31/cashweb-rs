@@ -297,7 +297,7 @@ impl ParsedMessage {
     ///
     /// This is done in-place, replacing the encrypted [payload] field with the plain text.
     #[inline]
-    pub fn validate_decrypt_in_place(
+    pub fn open_in_place(
         &mut self,
         private_key: &[u8],
         salt: &[u8],
@@ -333,11 +333,7 @@ impl ParsedMessage {
 
     /// Verify the stamp, authenticate the HMAC payload, and then decrypt and decode the payload.
     #[inline]
-    pub fn validate_decrypt(
-        &self,
-        private_key: &[u8],
-        salt: &[u8],
-    ) -> Result<DecryptResult, DecryptError> {
+    pub fn open(&self, private_key: &[u8], salt: &[u8]) -> Result<DecryptResult, DecryptError> {
         // Verify stamp
         let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
 
@@ -390,4 +386,20 @@ impl Into<PayloadPage> for MessagePage {
             payloads,
         }
     }
+}
+
+pub fn encrypt_payload(shared_key: &[u8], plaintext: &[u8]) -> Vec<u8> {
+    let (key, iv) = shared_key.as_ref().split_at(16);
+    let key = GenericArray::<u8, U16>::from_slice(&key);
+    let iv = GenericArray::<u8, U16>::from_slice(&iv);
+    let cipher = Aes128Cbc::new_var(&key, &iv).unwrap(); // This is safe
+    cipher.encrypt_vec(plaintext)
+}
+
+pub fn encrypt_payload_in_place(shared_key: &[u8], payload: &mut [u8]) {
+    let (key, iv) = shared_key.as_ref().split_at(16);
+    let key = GenericArray::<u8, U16>::from_slice(&key);
+    let iv = GenericArray::<u8, U16>::from_slice(&iv);
+    let cipher = Aes128Cbc::new_var(&key, &iv).unwrap(); // This is safe
+    cipher.encrypt(payload, 0).unwrap(); // TODO: Double check this is safe
 }
