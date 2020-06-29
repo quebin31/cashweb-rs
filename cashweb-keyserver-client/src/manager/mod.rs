@@ -145,7 +145,6 @@ where
         let mut total: HashSet<_> = self.uris.iter().cloned().collect();
         let mut total_errors = Vec::new();
         while !found_uris.is_empty() {
-
             // Get sample
             let sampler = |_: &[Uri]| found_uris.drain().collect();
             let sample_request = SampleRequest {
@@ -164,7 +163,7 @@ where
                 .iter()
                 .filter_map(|peer| peer.url.parse::<Uri>().ok())
                 .collect();
-            
+
             // Only keep new URIs
             found_uris = found_uris.difference(&total).cloned().collect();
             total = total.union(&found_uris).cloned().collect();

@@ -104,6 +104,8 @@ pub enum GetMetadataError<E> {
     UnexpectedStatusCode(u16),
     /// Peering is disabled on the keyserver.
     PeeringDisabled,
+    /// POP token missing from headers.
+    MissingToken,
 }
 
 impl<S> Service<(Uri, GetMetadata)> for KeyserverClient<S>
@@ -145,6 +147,16 @@ where
                 code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
             }
 
+            let token = response
+                .headers()
+                .into_iter()
+                .find(|(name, value)| {
+                    *name == AUTHORIZATION && value.as_bytes()[..4] == b"POP "[..]
+                })
+                .ok_or(Self::Error::MissingToken)?
+                .0
+                .to_string();
+
             // Deserialize and decode body
             let body = response.into_body();
             let buf = aggregate(body).await.map_err(Self::Error::Body)?;
@@ -165,6 +177,7 @@ where
                 .map_err(Self::Error::MetadataDecode)?;
 
             Ok(PairedMetadata {
+                token,
                 public_key: parsed_auth_wrapper.public_key,
                 metadata,
             })
