@@ -13,7 +13,7 @@ use block_modes::{block_padding::Pkcs7, BlockMode, BlockModeError, Cbc};
 use prost::{DecodeError as MessageDecodeError, Message as _};
 use ring::{
     digest::{digest, SHA256},
-    hkdf::{self, HKDF_SHA256},
+    hmac::{sign, Key as HmacKey, HMAC_SHA256},
 };
 use secp256k1::{key::PublicKey, Error as SecpError, Secp256k1};
 
@@ -110,7 +110,7 @@ impl fmt::Display for DigestError {
 
 impl Message {
     /// Get payload digest, if `payload_digest` is missing then calculate it.
-    pub fn payload_digest(&self) -> Result<[u8; 32], DigestError> {
+    pub fn digest(&self) -> Result<[u8; 32], DigestError> {
         // Calculate payload digest
         let payload_digest: [u8; 32] = match self.payload_digest.len() {
             0 => {
@@ -154,7 +154,7 @@ impl Message {
             .map_err(ParseError::DestinationPublicKey)?;
 
         // Calculate payload digest
-        let payload_digest = self.payload_digest().map_err(ParseError::Digest)?;
+        let payload_digest = self.digest().map_err(ParseError::Digest)?;
 
         // Parse stamp data
         let stamp = self.stamp.ok_or(ParseError::MissingStamp)?;
@@ -202,25 +202,19 @@ pub enum SharedKeyError {
 }
 
 /// Create shared key.
-pub fn create_shared_key<'a>(
+pub fn create_shared_key(
     source_public_key: PublicKey,
     private_key: &[u8],
     salt: &[u8],
-    info: &'a [&'a [u8]],
 ) -> Result<[u8; 32], SharedKeyError> {
     // Create merged key
     let merged_key =
         create_merged_key(source_public_key, private_key).map_err(SharedKeyError::Mul)?;
     let raw_merged_key = merged_key.serialize();
 
-    let salt = hkdf::Salt::new(HKDF_SHA256, salt);
-    let prk = salt.extract(&raw_merged_key);
-    let okm = prk
-        .expand(info, HKDF_SHA256)
-        .map_err(|_| SharedKeyError::Expand)?;
-
-    let mut shared_key = [0; 32];
-    okm.fill(&mut shared_key).unwrap(); // This is safe
+    let key = HmacKey::new(HMAC_SHA256, &raw_merged_key);
+    let digest = sign(&key, salt);
+    let shared_key: [u8; 32] = digest.as_ref().try_into().unwrap(); // This is safe
     Ok(shared_key)
 }
 
@@ -236,21 +230,14 @@ pub enum AuthenticationError {
 pub fn authenticate(
     shared_key: &[u8],
     payload_digest: &[u8],
-    auth_salt: &[u8],
+    payload_hmac: &[u8],
 ) -> Result<(), AuthenticationError> {
-    let shared_key = hkdf::Prk::new_less_safe(HKDF_SHA256, shared_key);
-
-    let info = [auth_salt];
-
-    // HMAC with salt
-    let okm = shared_key
-        .expand(&info, HKDF_SHA256)
-        .map_err(|_| AuthenticationError::Expand)?;
-    let mut digest = [0; 32];
-    okm.fill(&mut digest).unwrap(); // This is safe
+    // HMAC shared_key with payload_digest
+    let shared_key = HmacKey::new(HMAC_SHA256, shared_key);
+    let payload_hmac_expected = sign(&shared_key, payload_digest);
 
     // Check equality
-    if digest.as_ref() != payload_digest {
+    if payload_hmac_expected.as_ref() != payload_hmac {
         return Err(AuthenticationError::InvalidHmac);
     }
     Ok(())
@@ -287,9 +274,8 @@ impl ParsedMessage {
         &self,
         private_key: &[u8],
         salt: &[u8],
-        info: &'a [&'a [u8]],
     ) -> Result<[u8; 32], SharedKeyError> {
-        create_shared_key(self.source_public_key, private_key, salt, info)
+        create_shared_key(self.source_public_key, private_key, salt)
     }
 
     /// Authenticate the HMAC payload and return the merged key.
@@ -314,15 +300,14 @@ impl ParsedMessage {
     pub fn validate_decrypt_in_place(
         &mut self,
         private_key: &[u8],
-        auth_salt: &[u8],
-        info: &[&[u8]],
+        salt: &[u8],
     ) -> Result<DecryptResult, DecryptError> {
         // Verify stamp
         let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
 
         // Create shared key
         let shared_key = self
-            .create_shared_key(private_key, auth_salt, info)
+            .create_shared_key(private_key, salt)
             .map_err(DecryptError::SharedKey)?;
 
         // Authenticate HMAC payload
@@ -351,15 +336,14 @@ impl ParsedMessage {
     pub fn validate_decrypt(
         &self,
         private_key: &[u8],
-        auth_salt: &[u8],
-        info: &[&[u8]],
+        salt: &[u8],
     ) -> Result<DecryptResult, DecryptError> {
         // Verify stamp
         let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
 
         // Create shared key
         let shared_key = self
-            .create_shared_key(private_key, auth_salt, info)
+            .create_shared_key(private_key, salt)
             .map_err(DecryptError::SharedKey)?;
 
         // Authenticate HMAC payload
