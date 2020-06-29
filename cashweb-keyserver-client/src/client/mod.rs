@@ -5,6 +5,7 @@ pub use services::*;
 
 use async_trait::async_trait;
 use hyper::{http::uri::InvalidUri, Client as HyperClient};
+use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
 use tower_service::Service;
 use tower_util::ServiceExt;
@@ -25,6 +26,7 @@ impl<E> From<E> for KeyserverError<E> {
 /// The AddressMetadata paired with its PublicKey.
 #[derive(Clone, Debug)]
 pub struct PairedMetadata {
+    pub token: String,
     pub public_key: PublicKey,
     pub metadata: AddressMetadata,
 }
@@ -49,6 +51,16 @@ impl KeyserverClient<HyperClient<HttpConnector>> {
     pub fn new() -> Self {
         Self {
             inner_client: HyperClient::new(),
+        }
+    }
+}
+
+impl KeyserverClient<HyperClient<HttpsConnector<HttpConnector>>> {
+    /// Create new HTTPS client.
+    pub fn new_tls() -> Self {
+        let https = HttpsConnector::new();
+        Self {
+            inner_client: HyperClient::builder().build(https),
         }
     }
 }
