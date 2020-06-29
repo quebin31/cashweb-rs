@@ -11,7 +11,7 @@ description = "A protobuf library for the cash:web tokens."
 categories = ["development-tools"]
 
 [dependencies]
-base64 = "0.12.2"
+base64 = "0.12.3"
 http = "0.2.1"
 ring = "0.16.15"
 
