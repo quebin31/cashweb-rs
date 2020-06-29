@@ -5,8 +5,8 @@ use futures_core::{
     Future,
 };
 use hyper::{
-    body::aggregate, http::header::AUTHORIZATION, Body, Error as HyperError, Request, Response,
-    StatusCode,
+    body::aggregate, http::header::AUTHORIZATION, http::Method, Body, Error as HyperError, Request,
+    Response, StatusCode,
 };
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
@@ -56,7 +56,11 @@ where
 
     fn call(&mut self, (uri, _): (Uri, GetPeers)) -> Self::Future {
         let mut client = self.inner_client.clone();
-        let http_request = Request::builder().uri(uri).body(Body::empty()).unwrap(); // This is safe
+        let http_request = Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap(); // This is safe
 
         let fut = async move {
             let response = client
@@ -121,7 +125,11 @@ where
 
     fn call(&mut self, (uri, _): (Uri, GetMetadata)) -> Self::Future {
         let mut client = self.inner_client.clone();
-        let http_request = Request::builder().uri(uri).body(Body::empty()).unwrap(); // This is safe
+        let http_request = Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap(); // This is safe
         let fut = async move {
             // Get response
             let response = client
@@ -204,6 +212,7 @@ where
         request.metadata.encode(&mut body).unwrap();
 
         let http_request = Request::builder()
+            .method(Method::PUT)
             .uri(uri)
             .header(AUTHORIZATION, request.token)
             .body(Body::from(body))
