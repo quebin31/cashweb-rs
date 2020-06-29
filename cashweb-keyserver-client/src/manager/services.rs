@@ -24,8 +24,8 @@ where
     <C as Service<(Uri, T)>>::Error: fmt::Debug + Send,
     <C as Service<(Uri, T)>>::Response: Send + fmt::Debug,
     <C as Service<(Uri, T)>>::Future: Send,
-    Sampler: Fn(&[Uri]) -> Vec<Uri>,
-    Selector: Fn(Vec<<C as Service<(Uri, T)>>::Response>) -> <C as Service<(Uri, T)>>::Response
+    Sampler: FnOnce(&[Uri]) -> Vec<Uri>,
+    Selector: FnOnce(Vec<<C as Service<(Uri, T)>>::Response>) -> <C as Service<(Uri, T)>>::Response
         + Send
         + 'static,
 {

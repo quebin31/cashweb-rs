@@ -1,6 +1,6 @@
 pub mod services;
 
-use std::{fmt, sync::Arc};
+use std::{collections::HashSet, fmt, sync::Arc};
 
 use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient, Uri};
 use rand::seq::SliceRandom;
@@ -12,7 +12,7 @@ use crate::{
         services::{GetMetadata, GetPeers, PutMetadata},
         KeyserverClient, PairedMetadata,
     },
-    models::{AddressMetadata, Peers},
+    models::{AddressMetadata, Peer, Peers},
 };
 pub use services::*;
 
@@ -132,6 +132,56 @@ where
             selector: aggregate_peers,
         };
         self.clone().oneshot(sample_request).await
+    }
+
+    /// Crawl peers.
+    pub async fn crawl_peers(
+        &self,
+    ) -> Result<
+        SampleResponse<Peers, <C as Service<(Uri, GetPeers)>>::Error>,
+        SampleError<<C as Service<(Uri, GetPeers)>>::Error>,
+    > {
+        let mut found_uris: HashSet<_> = self.uris.iter().cloned().collect();
+        let mut total: HashSet<_> = self.uris.iter().cloned().collect();
+        let mut total_errors = Vec::new();
+        while !found_uris.is_empty() {
+
+            // Get sample
+            let sampler = |_: &[Uri]| found_uris.drain().collect();
+            let sample_request = SampleRequest {
+                request: GetPeers,
+                sampler,
+                selector: aggregate_peers,
+            };
+            let SampleResponse { response, errors } = self.clone().oneshot(sample_request).await?;
+
+            // Aggregate errors
+            total_errors.extend(errors);
+
+            // Aggregate URIs
+            let mut found_uris: HashSet<_> = response
+                .peers
+                .iter()
+                .filter_map(|peer| peer.url.parse::<Uri>().ok())
+                .collect();
+            
+            // Only keep new URIs
+            found_uris = found_uris.difference(&total).cloned().collect();
+            total = total.union(&found_uris).cloned().collect();
+        }
+
+        let response = Peers {
+            peers: total
+                .into_iter()
+                .map(|uri| Peer {
+                    url: uri.to_string(),
+                })
+                .collect(),
+        };
+        Ok(SampleResponse {
+            response,
+            errors: total_errors,
+        })
     }
 
     /// Perform a uniform broadcast of metadata over keyservers and select the latest.
