@@ -1,22 +1,17 @@
+//! This module contains the [`Wallet`] struct which allows for basic caching and payment of invoices.
+
 use std::{fmt, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
 use tokio::time::delay_for;
 
-/// Error associated with the `Wallet` receiving outputs.
-#[derive(Debug)]
-pub enum WalletError {
-    NotFound,
-    InvalidOutputs,
-}
+/// Received unexpected outputs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnexpectedOutputs;
 
-impl fmt::Display for WalletError {
+impl fmt::Display for UnexpectedOutputs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::NotFound => "pending payment not found or expired",
-            Self::InvalidOutputs => "invalid outputs",
-        };
-        f.write_str(printable)
+        f.write_str("received unexpected outputs")
     }
 }
 
@@ -47,6 +42,7 @@ where
     K: Clone + Send + Sync + 'static,
     O: std::cmp::PartialEq + Sync + Send + 'static,
 {
+    /// Create a new [`Wallet`] where the payments are cached for a given [`Duration`].
     pub fn new(timeout: Duration) -> Self {
         Wallet {
             timeout,
@@ -75,7 +71,7 @@ where
     }
 
     /// Removes an output from the wallet, else raises an error.
-    pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), WalletError> {
+    pub fn recv_outputs(&self, key: &K, outputs: &[O]) -> Result<(), UnexpectedOutputs> {
         let check_subset = |_: &K, expected_outputs: &Vec<O>| {
             expected_outputs
                 .iter()
@@ -85,7 +81,7 @@ where
         if self.pending.remove_if(key, check_subset).is_some() {
             Ok(())
         } else {
-            Err(WalletError::InvalidOutputs)
+            Err(UnexpectedOutputs)
         }
     }
 }

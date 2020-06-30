@@ -1,3 +1,19 @@
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
+#![allow(elided_lifetimes_in_paths)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+//! `cashweb-payments` is a library providing structures and utilities related to
+//! the [`BIP70: Payment Protocol`] and a [`Wallet`] structure to allow receiving
+//! payments.
+//!
+//! [`Wallet`]: wallet::Wallet
+//! [`BIP70: Payment Protocol`]: https://github.com/bitcoin/bips/blob/master/bip-0070.mediawiki
+
 pub mod wallet;
 
 use std::fmt;
@@ -6,7 +22,12 @@ use bytes::Bytes;
 use http::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
 use prost::{DecodeError, Message};
 
+#[allow(missing_docs)]
 pub mod bip70 {
+    //! This module contains structures related to the [`BIP70: Payment Protocol`]
+    //!
+    //! [`BIP70: Payment Protocol`]: https://github.com/bitcoin/bips/blob/master/bip-0070.mediawiki
+
     include!(concat!(env!("OUT_DIR"), "/bip70.rs"));
 }
 
