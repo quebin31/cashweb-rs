@@ -1,3 +1,5 @@
+//! This module contains the [`Stamp`] message and methods for verifying and constructing them.
+
 use std::fmt;
 
 use bitcoin::{
@@ -8,26 +10,33 @@ use bitcoin::{
 use ring::digest::{digest, SHA256};
 use ripemd160::{Digest, Ripemd160};
 use secp256k1::{
-    key::{PublicKey, SecretKey},
+    key::{PublicKey, SecretKey as PrivateKey},
     Error as SecpError, Secp256k1,
 };
 
 pub use crate::{
     create_shared_key,
     models::{stamp::StampType, Stamp, StampOutpoints},
-    SharedKeyError,
 };
 
 /// Error associated with verification of stamps.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StampError {
+    /// Failed to decode a transaction.
     Decode(TransactionDecodeError),
+    /// A specified stamp output doesn't exist.
     MissingOutput,
+    /// A specified stamp output was not a pay-to-pubkey-hash.
     NotP2PKH,
+    /// A specified stamp output contained an unexpected address.
     UnexpectedAddress,
+    /// Combination of public keys was degenerate.
     DegenerateCombination,
+    /// Child numbers given caused an overflow.
     ChildNumberOverflow,
+    /// Unsupported stamp type.
     UnsupportedStampType,
+    /// Stamp type was `None`.
     NoneType,
 }
 
@@ -77,7 +86,7 @@ pub fn verify_stamp(
     }
 
     // Calculate master pubkey
-    let payload_secret_key = SecretKey::from_slice(&payload_digest.as_ref()).unwrap(); // This is safe
+    let payload_secret_key = PrivateKey::from_slice(&payload_digest.as_ref()).unwrap(); // This is safe
     let payload_public_key =
         PublicKey::from_secret_key(&Secp256k1::signing_only(), &payload_secret_key);
     let combined_key = destination_public_key
@@ -142,19 +151,21 @@ pub fn verify_stamp(
     Ok(txs)
 }
 
+/// Error associated with creating stamp private keys.
 #[derive(Debug)]
 pub enum StampKeyError {
-    SharedKey(SharedKeyError),
+    /// Degenerate addition of private keys.
     Addition(SecpError),
+    /// Child numbers given caused an overflow.
     ChildNumberOverflow,
 }
 
 /// Construct stamp private key.
 pub fn create_stamp_private_keys<TV, V>(
-    mut private_key: SecretKey,
+    mut private_key: PrivateKey,
     payload_digest: &[u8; 32],
     output_profile: TV,
-) -> Result<Vec<Vec<SecretKey>>, StampKeyError>
+) -> Result<Vec<Vec<PrivateKey>>, StampKeyError>
 where
     for<'a> &'a TV: IntoIterator<Item = &'a (u32, V)>,
     for<'a> &'a V: IntoIterator<Item = &'a u32>,

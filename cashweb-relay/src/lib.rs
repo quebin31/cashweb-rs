@@ -1,6 +1,20 @@
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
+#![allow(elided_lifetimes_in_paths)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+//! `cashweb-relay` is a library providing serialization/deserialization, encryption/decryption/verification of
+//! structures in the [`Relay Protocol`].
+//!
+//! [`Relay Protocol`]: https://github.com/cashweb/specifications/blob/master/authorization-wrapper/specification.mediawiki
+
+#[allow(unreachable_pub, missing_docs)]
 mod models;
 pub mod stamp;
-pub use secp256k1;
 
 use std::{convert::TryInto, fmt};
 
@@ -17,6 +31,15 @@ use ring::{
 };
 use secp256k1::{key::PublicKey, Error as SecpError, Secp256k1};
 
+pub mod secp {
+    //! This module contains re-exported `secp256k1` primitives.
+
+    pub use secp256k1::{
+        key::{PublicKey, SecretKey as PrivateKey},
+        Error as SecpError, Secp256k1,
+    };
+}
+
 pub use crate::models::{
     message::EncryptionScheme, Message, MessagePage, MessageSet, Payload, PayloadPage, Profile,
 };
@@ -25,21 +48,32 @@ use stamp::*;
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
 /// Represents a [Message](struct.Message.html) post-parsing.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParsedMessage {
+    /// The source public key.
     pub source_public_key: PublicKey,
+    /// The destinations public key.
     pub destination_public_key: PublicKey,
+    /// Maleable server time.
     pub received_time: i64,
+    /// The SHA-256 digest of the payload.
     pub payload_digest: [u8; 32],
+    /// The stamp attached to the message.
     pub stamp: Stamp,
+    /// The encryption scheme used on the serialized `Payload` to produce the `payload` field.
     pub scheme: EncryptionScheme,
+    /// The `salt` is used to salt both the `payload_hmac` and the encryption key.
     pub salt: Vec<u8>,
+    /// The HMAC of the `payload`, specifically `HMAC(HMAC(sdG, salt), payload_digest)`
     pub payload_hmac: [u8; 32],
+    /// The size, in bytes, of the `payload`.
     pub payload_size: u64,
+    /// The encrypted `payload`.
     pub payload: Vec<u8>,
 }
 
 impl ParsedMessage {
+    /// Convert [`ParsedMessage`] into a [`Message`].
     pub fn into_message(self) -> Message {
         Message {
             source_public_key: self.source_public_key.serialize().to_vec(),
@@ -56,17 +90,20 @@ impl ParsedMessage {
     }
 }
 
-/// Error associated with [Message](struct.Message.html) parsing.
-#[derive(Debug)]
+/// Error associated with [`Message`] parsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
+    /// Unable to calculate the [`Message::payload_digest`].
     Digest(DigestError),
+    /// Unable to parse the [`Message::source_public_key`].
     SourcePublicKey(SecpError),
+    /// Unable to parse the [`Message::destination_public_key`].
     DestinationPublicKey(SecpError),
-    DigestAndPayloadMissing,
-    FraudulentDigest,
-    UnexpectedLengthDigest,
+    /// Stamp information missing.
     MissingStamp,
+    /// Unsupported stamp type given.
     UnsupportedStampType,
+    /// Payload HMAC was an unexpected length.
     UnexpectedLengthPayloadHmac,
 }
 
@@ -78,9 +115,6 @@ impl fmt::Display for ParseError {
             Self::DestinationPublicKey(err) => {
                 return writeln!(f, "destination public key: {}", err)
             }
-            Self::DigestAndPayloadMissing => "digest and payload missing",
-            Self::FraudulentDigest => "fraudulent digest",
-            Self::UnexpectedLengthDigest => "unexpected length digest",
             Self::MissingStamp => "missing stamp",
             Self::UnsupportedStampType => "unsupported stamp type",
             Self::UnexpectedLengthPayloadHmac => "unexpected length payload hmac",
@@ -89,11 +123,14 @@ impl fmt::Display for ParseError {
     }
 }
 
-/// Error associated with getting the `payload_digest`.
-#[derive(Debug)]
+/// Error associated with getting the [`Message::payload_digest`].
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DigestError {
+    /// Both the digest and payload are missing.
     DigestAndPayloadMissing,
+    /// Fraudulent digest.
     FraudulentDigest,
+    /// Digest was an unexpected length.
     UnexpectedLengthDigest,
 }
 
@@ -109,7 +146,8 @@ impl fmt::Display for DigestError {
 }
 
 impl Message {
-    /// Get payload digest, if `payload_digest` is missing then calculate it.
+    /// Get the SHA-256 digest of the `payload`, if `payload_digest` is missing then calculate it.
+    #[inline]
     pub fn digest(&self) -> Result<[u8; 32], DigestError> {
         // Calculate payload digest
         let payload_digest: [u8; 32] = match self.payload_digest.len() {
@@ -146,6 +184,7 @@ impl Message {
     /// Parse the [Message](struct.Message.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
     ///
     /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields into arrays.
+    #[inline]
     pub fn parse(self) -> Result<ParsedMessage, ParseError> {
         // Decode public keys
         let source_public_key =
@@ -184,6 +223,7 @@ impl Message {
 }
 
 /// Create the merged key from the source public key and destination private key.
+#[inline]
 pub fn create_merged_key(
     source_public_key: PublicKey,
     private_key: &[u8],
@@ -194,22 +234,15 @@ pub fn create_merged_key(
     Ok(merged_key)
 }
 
-/// Error associated with creating the shared key.
-#[derive(Debug)]
-pub enum SharedKeyError {
-    Mul(SecpError),
-    Expand,
-}
-
 /// Create shared key.
+#[inline]
 pub fn create_shared_key(
     source_public_key: PublicKey,
     private_key: &[u8],
     salt: &[u8],
-) -> Result<[u8; 32], SharedKeyError> {
+) -> Result<[u8; 32], SecpError> {
     // Create merged key
-    let merged_key =
-        create_merged_key(source_public_key, private_key).map_err(SharedKeyError::Mul)?;
+    let merged_key = create_merged_key(source_public_key, private_key)?;
     let raw_merged_key = merged_key.serialize();
 
     let key = HmacKey::new(HMAC_SHA256, &raw_merged_key);
@@ -218,46 +251,57 @@ pub fn create_shared_key(
     Ok(shared_key)
 }
 
-/// Error associated with authentication of the [Payload](struct.Payload.html).
-#[derive(Debug)]
-pub enum AuthenticationError {
-    InvalidHmac,
-    Expand,
-}
+/// Message authentication failed, the calculated HMAC did not match the one given.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InvalidHmac;
 
-/// Authenticate the [Payload](struct.Payload.html) and return the merged key.
+/// Authenticate the [`Payload`] and return the merged key.
 #[inline]
 pub fn authenticate(
     shared_key: &[u8],
     payload_digest: &[u8],
     payload_hmac: &[u8],
-) -> Result<(), AuthenticationError> {
+) -> Result<(), InvalidHmac> {
     // HMAC shared_key with payload_digest
     let shared_key = HmacKey::new(HMAC_SHA256, shared_key);
     let payload_hmac_expected = sign(&shared_key, payload_digest);
 
     // Check equality
     if payload_hmac_expected.as_ref() != payload_hmac {
-        return Err(AuthenticationError::InvalidHmac);
+        return Err(InvalidHmac);
     }
     Ok(())
 }
 
-/// The result of [validate_decrypt](struct.ParsedMessage.html#method.validate_decrypt) or [validate_decrypt_in_place](struct.ParsedMessage.html#method.validate_decrypt_in_place).
-#[derive(Debug)]
-pub struct DecryptResult {
+/// The result of [`open`] or [`open_in_place`].
+///
+/// [`open`]: ParsedMessage::open
+/// [`open_in_place`]: ParsedMessage::open_in_place
+#[derive(Debug, Clone, PartialEq)]
+pub struct Opened {
+    /// Decoded transactions
     pub txs: Vec<Transaction>,
+    /// Decrypted and deserialized payload.
     pub payload: Payload,
 }
 
-/// Error associated with [validate_decrypt](struct.ParsedMessage.html#method.validate_decrypt) or [validate_decrypt_in_place](struct.ParsedMessage.html#method.validate_decrypt_in_place).
-#[derive(Debug)]
-pub enum DecryptError {
+/// Error associated with [`open`] or [`open_in_place`].
+///
+/// [`open`]: ParsedMessage::open
+/// [`open_in_place`]: ParsedMessage::open_in_place
+#[derive(Debug, Clone)]
+pub enum OpenError {
+    /// Invalid stamp.
     Stamp(StampError),
-    SharedKey(SharedKeyError),
-    Authentication(AuthenticationError),
+    /// Failed to construct shared key.
+    SharedKey(SecpError),
+    /// Failed authentication.
+    Authentication,
+    /// Failed to decode the plaintext [`Payload`].
     Payload(MessageDecodeError),
+    /// Failed to decrypt the ciphertext [`Payload`].
     Decrypt(BlockModeError),
+    /// Degenerate multiplication of public keys.
     Mul(SecpError),
 }
 
@@ -274,13 +318,13 @@ impl ParsedMessage {
         &self,
         private_key: &[u8],
         salt: &[u8],
-    ) -> Result<[u8; 32], SharedKeyError> {
+    ) -> Result<[u8; 32], SecpError> {
         create_shared_key(self.source_public_key, private_key, salt)
     }
 
     /// Authenticate the HMAC payload and return the merged key.
     #[inline]
-    pub fn authenticate(&self, shared_key: &[u8; 32]) -> Result<(), AuthenticationError> {
+    pub fn authenticate(&self, shared_key: &[u8; 32]) -> Result<(), InvalidHmac> {
         authenticate(shared_key, &self.payload_digest, &self.salt)?;
 
         Ok(())
@@ -297,22 +341,18 @@ impl ParsedMessage {
     ///
     /// This is done in-place, replacing the encrypted `payload` field with the plain text.
     #[inline]
-    pub fn open_in_place(
-        &mut self,
-        private_key: &[u8],
-        salt: &[u8],
-    ) -> Result<DecryptResult, DecryptError> {
+    pub fn open_in_place(&mut self, private_key: &[u8], salt: &[u8]) -> Result<Opened, OpenError> {
         // Verify stamp
-        let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
+        let txs = self.verify_stamp().map_err(OpenError::Stamp)?;
 
         // Create shared key
         let shared_key = self
             .create_shared_key(private_key, salt)
-            .map_err(DecryptError::SharedKey)?;
+            .map_err(OpenError::SharedKey)?;
 
         // Authenticate HMAC payload
         self.authenticate(&shared_key)
-            .map_err(DecryptError::Authentication)?;
+            .map_err(|_| OpenError::Authentication)?;
 
         // Decrypt
         let mut raw_payload = &mut self.payload;
@@ -322,29 +362,28 @@ impl ParsedMessage {
         let cipher = Aes128Cbc::new_var(&key, &iv).unwrap(); // This is safe
         cipher
             .decrypt(&mut raw_payload)
-            .map_err(DecryptError::Decrypt)?;
+            .map_err(OpenError::Decrypt)?;
 
         // Decode
-        let payload =
-            Payload::decode(&mut raw_payload.as_slice()).map_err(DecryptError::Payload)?;
+        let payload = Payload::decode(&mut raw_payload.as_slice()).map_err(OpenError::Payload)?;
 
-        Ok(DecryptResult { txs, payload })
+        Ok(Opened { txs, payload })
     }
 
     /// Verify the stamp, authenticate the HMAC payload, and then decrypt and decode the payload.
     #[inline]
-    pub fn open(&self, private_key: &[u8], salt: &[u8]) -> Result<DecryptResult, DecryptError> {
+    pub fn open(&self, private_key: &[u8], salt: &[u8]) -> Result<Opened, OpenError> {
         // Verify stamp
-        let txs = self.verify_stamp().map_err(DecryptError::Stamp)?;
+        let txs = self.verify_stamp().map_err(OpenError::Stamp)?;
 
         // Create shared key
         let shared_key = self
             .create_shared_key(private_key, salt)
-            .map_err(DecryptError::SharedKey)?;
+            .map_err(OpenError::SharedKey)?;
 
         // Authenticate HMAC payload
         self.authenticate(&shared_key)
-            .map_err(DecryptError::Authentication)?;
+            .map_err(|_| OpenError::Authentication)?;
 
         // Decrypt
         let raw_payload = &self.payload;
@@ -354,13 +393,12 @@ impl ParsedMessage {
         let cipher = Aes128Cbc::new_var(&key, &iv).unwrap(); // This is safe
         cipher
             .decrypt_vec(raw_payload)
-            .map_err(DecryptError::Decrypt)?;
+            .map_err(OpenError::Decrypt)?;
 
         // Decode
-        let payload =
-            Payload::decode(&mut raw_payload.as_slice()).map_err(DecryptError::Payload)?;
+        let payload = Payload::decode(&mut raw_payload.as_slice()).map_err(OpenError::Payload)?;
 
-        Ok(DecryptResult { txs, payload })
+        Ok(Opened { txs, payload })
     }
 }
 
@@ -388,6 +426,9 @@ impl Into<PayloadPage> for MessagePage {
     }
 }
 
+/// Encrypt a payload using a shared key.
+///
+/// Typically the shared key is `HMAC(sdG, salt)` created using the [`create_shared_key`] method.
 pub fn encrypt_payload(shared_key: &[u8], plaintext: &[u8]) -> Vec<u8> {
     let (key, iv) = shared_key.as_ref().split_at(16);
     let key = GenericArray::<u8, U16>::from_slice(&key);
@@ -396,6 +437,9 @@ pub fn encrypt_payload(shared_key: &[u8], plaintext: &[u8]) -> Vec<u8> {
     cipher.encrypt_vec(plaintext)
 }
 
+/// Encrypt a payload, in place, using a shared key.
+///
+/// Typically the shared key is `HMAC(sdG, salt)` created using the [`create_shared_key`] method.
 pub fn encrypt_payload_in_place(shared_key: &[u8], payload: &mut [u8]) {
     let (key, iv) = shared_key.as_ref().split_at(16);
     let key = GenericArray::<u8, U16>::from_slice(&key);
