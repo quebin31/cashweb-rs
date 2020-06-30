@@ -14,7 +14,7 @@ use crate::{
     Decodable, Encodable,
 };
 
-/// The error type associated with `Input` deserialization.
+/// The error type associated with [`Input`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Failed to decode [`Outpoint`].

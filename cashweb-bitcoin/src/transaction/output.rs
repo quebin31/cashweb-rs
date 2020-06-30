@@ -12,7 +12,7 @@ use crate::{
     Decodable, Encodable,
 };
 
-/// The error type associated with `Output` deserialization.
+/// The error type associated with [`Output`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Value is too short.
