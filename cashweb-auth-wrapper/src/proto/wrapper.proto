@@ -1,6 +1,8 @@
 syntax = "proto3";
 package wrapper;
 
+// AuthWrapper provides integrity, authentication, and non-repuditation by
+// providing a framework for covering blobs with signatures.
 message AuthWrapper {
   // Serialized version of the public key.
   bytes pub_key = 1;

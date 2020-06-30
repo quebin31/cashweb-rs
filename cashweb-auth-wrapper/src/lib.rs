@@ -1,20 +1,21 @@
+mod models;
 use std::{convert::TryInto, fmt};
 
 use ring::digest::{digest, SHA256};
 use secp256k1::{key::PublicKey, Error as SecpError, Message, Secp256k1, Signature};
 
-include!(concat!(env!("OUT_DIR"), "/wrapper.rs"));
+pub use models::{auth_wrapper::SignatureScheme, AuthWrapper};
 
-/// Represents a [AuthWrapper](struct.AuthWrapper.html) post-parsing.
+/// Represents a [`AuthWrapper`] post-parsing.
 pub struct ParsedAuthWrapper {
     pub public_key: PublicKey,
     pub signature: Signature,
-    pub scheme: auth_wrapper::SignatureScheme,
+    pub scheme: SignatureScheme,
     pub payload: Vec<u8>,
     pub payload_digest: [u8; 32],
 }
 
-/// The error associated with validation and parsing of the [AuthWrapper](struct.AuthWrapper.html).
+/// The error associated with validation and parsing of the [`AuthWrapper`].
 #[derive(Debug)]
 pub enum ParseError {
     PublicKey(SecpError),
@@ -40,21 +41,17 @@ impl fmt::Display for ParseError {
 }
 
 impl AuthWrapper {
-    /// Parse the [AuthWrapper](struct.AuthWrapper.html) to construct a [ParsedMessage](struct.ParsedMessage.html).
+    /// Parse the [`AuthWrapper`] to construct a [`ParsedAuthWrapper`].
     ///
-    /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields into arrays.
+    /// The involves deserialization of both public keys, calculation of the payload digest, and coercion of byte fields
+    /// into fixed-length arrays.
     #[inline]
     pub fn parse(self) -> Result<ParsedAuthWrapper, ParseError> {
         // Parse public key
         let public_key = PublicKey::from_slice(&self.pub_key).map_err(ParseError::PublicKey)?;
 
         // Parse scheme
-        let scheme = auth_wrapper::SignatureScheme::from_i32(self.scheme)
-            .ok_or(ParseError::UnsupportedScheme)?;
-        if self.scheme != 1 {
-            // TODO: Support Schnorr
-            return Err(ParseError::UnsupportedScheme.into());
-        }
+        let scheme = SignatureScheme::from_i32(self.scheme).ok_or(ParseError::UnsupportedScheme)?;
 
         // Parse signature
         let signature = Signature::from_compact(&self.signature).map_err(ParseError::Signature)?;
@@ -91,24 +88,32 @@ impl AuthWrapper {
     }
 }
 
+/// Error associated with verifying the signature of an [`AuthWrapper`].
 #[derive(Debug)]
 pub enum VerifyError {
     Message(SecpError),
     InvalidSignature(SecpError),
+    UnsupportedScheme,
 }
 
 impl fmt::Display for VerifyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Message(err) => return err.fmt(f),
-            Self::InvalidSignature(err) => return err.fmt(f),
-        };
+            Self::Message(err) => err.fmt(f),
+            Self::InvalidSignature(err) => err.fmt(f),
+            Self::UnsupportedScheme => f.write_str("unsupported signature scheme"),
+        }
     }
 }
 
 impl ParsedAuthWrapper {
-    /// Verify the signature on [ParsedAuthWrapper](struct.ParsedAuthWrapper.html).
+    /// Verify the signature on [`ParsedAuthWrapper`].
+    #[inline]
     pub fn verify(&self) -> Result<(), VerifyError> {
+        if self.scheme != SignatureScheme::Schnorr {
+            // TODO: Support Schnorr
+            return Err(VerifyError::UnsupportedScheme);
+        }
         // Verify signature on the message
         let msg =
             Message::from_slice(self.payload_digest.as_ref()).map_err(VerifyError::Message)?;
