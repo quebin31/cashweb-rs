@@ -1,4 +1,4 @@
-//! A "prelude" fpr crates using the `cashweb-bitcoin` crate.
+//! A "prelude" for crates using the `cashweb-bitcoin` crate.
 //!
 //! This prelude is similar to the standard library's prelude in that you'll
 //! almost always want to import its entire contents, but unlike the
@@ -11,6 +11,7 @@
 //!
 //! The prelude may grow over time as additional items see ubiquitous use.
 
+#[doc(inline)]
 pub use crate::{
     transaction::{
         input::{DecodeError as InputDecodeError, Input},

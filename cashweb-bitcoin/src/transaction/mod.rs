@@ -15,8 +15,11 @@ use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
     Decodable, Encodable,
 };
+#[doc(inline)]
 pub use input::{DecodeError as InputDecodeError, Input};
+#[doc(inline)]
 pub use output::{DecodeError as OutputDecodeError, Output};
+#[doc(inline)]
 pub use script::Script;
 
 /// Represents a transaction.
@@ -29,7 +32,7 @@ pub struct Transaction {
     pub lock_time: u32,
 }
 
-/// Enumerates the different signatuer hash types.
+/// Enumerates the different signature hash types.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(missing_docs)]
 pub enum SignatureHashType {
