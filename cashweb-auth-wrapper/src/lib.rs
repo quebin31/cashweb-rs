@@ -11,7 +11,9 @@
 //!
 //! [`Authorization Wrapper Framework`]: https://github.com/cashweb/specifications/blob/master/authorization-wrapper/specification.mediawiki
 
+#[allow(unreachable_pub)]
 mod models;
+
 use std::{convert::TryInto, fmt};
 
 use ring::digest::{digest, SHA256};
