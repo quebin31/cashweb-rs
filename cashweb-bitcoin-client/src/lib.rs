@@ -1,11 +1,23 @@
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
+#![allow(elided_lifetimes_in_paths)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+//! `cashweb-bitcoin-client` is a library providing a [`BitcoinClient`] with
+//! basic asynchronous methods for interacting with bitcoind.
+
 use std::fmt;
 
 use hex::FromHexError;
 use json_rpc::prelude::*;
-pub use json_rpc::{clients::http::HttpConnector, prelude::Connect};
+pub use json_rpc::{clients::http::{HttpConnector, HttpsConnector}, prelude::Connect};
 use serde_json::Value;
 
-/// Basic bitcoin JSON-RPC client.
+/// Basic Bitcoin JSON-RPC client.
 #[derive(Clone, Debug)]
 pub struct BitcoinClient<C>(HttpClient<C>);
 
@@ -13,6 +25,13 @@ impl BitcoinClient<HttpConnector> {
     /// Construct a new `BitcoinClient` using a HTTP connector.
     pub fn new(endpoint: String, username: String, password: String) -> Self {
         BitcoinClient(HttpClient::new(endpoint, Some(username), Some(password)))
+    }
+}
+
+impl BitcoinClient<HttpsConnector<HttpConnector>> {
+    /// Construct a new `BitcoinClient` using a HTTPS connector.
+    pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
+        BitcoinClient(HttpClient::new_tls(endpoint, Some(username), Some(password)))
     }
 }
 
@@ -27,10 +46,15 @@ impl<C> std::ops::Deref for BitcoinClient<C> {
 /// The error type associated with the Bitcoin RPC.
 #[derive(Debug)]
 pub enum NodeError {
+    /// Error connecting to bitcoind.
     Http(HttpError),
+    /// bitcoind responded with an JSON-RPC error.
     Rpc(RpcError),
+    /// Failed to deserialize response JSON.
     Json(JsonError),
+    /// The response JSON was empty.
     EmptyResponse,
+    /// Failed to decode hexidecimal response.
     HexDecode(FromHexError),
 }
 
