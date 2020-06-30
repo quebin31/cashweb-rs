@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-bitcoin-client` is a library providing a [`BitcoinClient`] with
 //! basic asynchronous methods for interacting with bitcoind.

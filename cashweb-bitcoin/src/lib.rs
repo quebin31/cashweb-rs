@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-bitcoin` is a library providing serialization/deserialization of Bitcoin structures,
 //!  utility methods for signing, and methods for [`Hierarchical Deterministic Wallets`] use.

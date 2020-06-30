@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-bitcoin-client` is a library providing [`KeyserverClient`] which allows
 //! interaction with specific keyservers and [`KeyserverManager`]

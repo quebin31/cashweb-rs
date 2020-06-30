@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-relay` is a library providing serialization/deserialization, encryption/decryption/verification of
 //! structures in the [`Relay Protocol`].

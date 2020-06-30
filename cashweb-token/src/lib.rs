@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-token` is a library providing utility methods for the [`POP Token Protocol`].
 //!

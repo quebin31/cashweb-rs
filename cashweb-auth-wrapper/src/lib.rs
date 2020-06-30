@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-auth-wrapper` is a library providing deserialization, parsing, and verification needed within the [`Authorization Wrapper Framework`].
 //!

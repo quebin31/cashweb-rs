@@ -4,8 +4,6 @@
     rust_2018_idioms,
     unreachable_pub
 )]
-#![allow(elided_lifetimes_in_paths)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! `cashweb-payments` is a library providing structures and utilities related to
 //! the [`BIP70: Payment Protocol`] and a [`Wallet`] structure to allow receiving
