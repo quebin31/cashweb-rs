@@ -1,3 +1,6 @@
+//! This module contains the [`Outpoint`] struct which represents a Bitcoin transaction outpoint.
+//! It enjoys [`Encodable`] and [`Decodable`].
+
 use std::fmt;
 
 use bytes::{Buf, BufMut};
@@ -6,6 +9,7 @@ use crate::{Decodable, Encodable};
 
 /// Represents an outpoint.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub struct Outpoint {
     pub tx_id: [u8; 32],
     pub vout: u32,

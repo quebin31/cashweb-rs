@@ -28,6 +28,11 @@ impl<S> KeyserverManager<S> {
             uris,
         }
     }
+
+    /// Converts the manager into the underlying client.
+    pub fn into_client(self) -> KeyserverClient<S> {
+        self.inner_client
+    }
 }
 
 impl KeyserverManager<HyperClient<HttpConnector>> {
@@ -48,7 +53,7 @@ pub fn uniform_random_sampler(uris: &[Uri], size: usize) -> Vec<Uri> {
     uris.choose_multiple(&mut rng, size).cloned().collect()
 }
 
-/// Select best authwrapper.
+/// Select best [`AuthWrapper`] from a list.
 ///
 /// Panics if empty slice is given.
 pub fn select_auth_wrapper(metadatas: Vec<(Uri, PairedMetadata)>) -> (Uri, PairedMetadata) {
@@ -58,7 +63,7 @@ pub fn select_auth_wrapper(metadatas: Vec<(Uri, PairedMetadata)>) -> (Uri, Paire
         .unwrap()
 }
 
-/// Aggregate a collection of peers into a single structure.
+/// Aggregate a collection of [`Peers`] into a single structure.
 pub fn aggregate_peers(peers: Vec<(Uri, Peers)>) -> Peers {
     let peers = peers
         .into_iter()
@@ -68,6 +73,7 @@ pub fn aggregate_peers(peers: Vec<(Uri, Peers)>) -> Peers {
     Peers { peers }
 }
 
+/// Response to a sample query.
 #[derive(Debug)]
 pub struct SampleResponse<R, E> {
     pub uri: Uri,
@@ -80,6 +86,7 @@ where
     R: fmt::Debug,
     E: fmt::Debug,
 {
+    /// Create a sample response from a list of results.
     pub fn select<F: FnOnce(Vec<(Uri, R)>) -> (Uri, R)>(
         responses: Vec<(Uri, Result<R, E>)>,
         selector: F,
@@ -105,6 +112,7 @@ where
     }
 }
 
+/// Response to an aggregation query.
 #[derive(Debug)]
 pub struct AggregateResponse<R, E> {
     pub response: R,
@@ -116,6 +124,7 @@ where
     R: fmt::Debug,
     E: fmt::Debug,
 {
+    /// Create a sample response from a list of results.
     pub fn aggregate<F: FnOnce(Vec<(Uri, R)>) -> R>(
         responses: Vec<(Uri, Result<R, E>)>,
         aggregator: F,

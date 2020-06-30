@@ -21,8 +21,8 @@ use secp256k1::{key::PublicKey, Error as SecpError, Message, Secp256k1, Signatur
 
 pub use models::{auth_wrapper::SignatureScheme, AuthWrapper};
 
-/// Represents a [`AuthWrapper`] post-parsing.
-#[derive(Debug, Clone)]
+/// Represents an [`AuthWrapper`] post-parsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedAuthWrapper {
     /// The public key associated with the signature.
     pub public_key: PublicKey,
@@ -37,7 +37,7 @@ pub struct ParsedAuthWrapper {
 }
 
 /// The error associated with validation and parsing of the [`AuthWrapper`].
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     /// The public key provided was invalid.
     PublicKey(SecpError),
@@ -116,7 +116,7 @@ impl AuthWrapper {
 }
 
 /// Error associated with verifying the signature of an [`AuthWrapper`].
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerifyError {
     /// The signature failed verification.
     InvalidSignature(SecpError),
@@ -142,8 +142,7 @@ impl ParsedAuthWrapper {
             return Err(VerifyError::UnsupportedScheme);
         }
         // Verify signature on the message
-        let msg =
-            Message::from_slice(self.payload_digest.as_ref()).unwrap(); // This is safe
+        let msg = Message::from_slice(self.payload_digest.as_ref()).unwrap(); // This is safe
         let secp = Secp256k1::verification_only();
         secp.verify(&msg, &self.signature, &self.public_key)
             .map_err(VerifyError::InvalidSignature)?;

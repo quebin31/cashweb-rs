@@ -1,3 +1,6 @@
+//! This module contains the [`Script`] struct which represents a Bitcoin transaction script.
+//! It enjoys [`Encodable`], and provides some utility methods.
+
 pub mod opcodes;
 
 use crate::{var_int::VarInt, Encodable};

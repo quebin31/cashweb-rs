@@ -90,8 +90,8 @@ pub fn verify_stamp(
         .derive_public_path(
             &Secp256k1::verification_only(),
             &[
-                ChildNumber::from_normal_idx(44).unwrap(),
-                ChildNumber::from_normal_idx(145).unwrap(),
+                ChildNumber::from_normal_index(44).unwrap(),
+                ChildNumber::from_normal_index(145).unwrap(),
             ],
         )
         .unwrap(); // This is safe
@@ -103,7 +103,7 @@ pub fn verify_stamp(
             Transaction::decode(&mut outpoint.stamp_tx.as_slice()).map_err(StampError::Decode)?;
 
         // Calculate intermediate child
-        let child_number = ChildNumber::from_normal_idx(tx_num as u32)
+        let child_number = ChildNumber::from_normal_index(tx_num as u32)
             .map_err(|_| StampError::ChildNumberOverflow)?;
         let tx_child = intermediate_child
             .derive_public_child(&context, child_number)
@@ -121,8 +121,8 @@ pub fn verify_stamp(
             let pubkey_hash = &script.as_bytes()[3..23]; // This is safe as we've checked it's a p2pkh
 
             // Derive child key
-            let child_number =
-                ChildNumber::from_normal_idx(*vout).map_err(|_| StampError::ChildNumberOverflow)?;
+            let child_number = ChildNumber::from_normal_index(*vout)
+                .map_err(|_| StampError::ChildNumberOverflow)?;
             let child_key = tx_child
                 .derive_public_child(&context, child_number)
                 .unwrap(); // TODO: Double check this is safe
@@ -169,21 +169,21 @@ where
     let intermediate_child = master_private_key.derive_private_path(
         &context,
         &[
-            ChildNumber::from_normal_idx(44).unwrap(),
-            ChildNumber::from_normal_idx(145).unwrap(),
+            ChildNumber::from_normal_index(44).unwrap(),
+            ChildNumber::from_normal_index(145).unwrap(),
         ],
     );
     output_profile
         .into_iter()
         .map(|(tx_num, vouts)| {
             // Create intermediate child
-            let child_number = ChildNumber::from_normal_idx(*tx_num)
+            let child_number = ChildNumber::from_normal_index(*tx_num)
                 .map_err(|_| StampKeyError::ChildNumberOverflow)?;
             let tx_child = intermediate_child.derive_private_child(&context, child_number);
             let private_keys_inner: Result<Vec<_>, _> = vouts
                 .into_iter()
                 .map(|vout| {
-                    let child_number = ChildNumber::from_normal_idx(*vout)
+                    let child_number = ChildNumber::from_normal_index(*vout)
                         .map_err(|_| StampKeyError::ChildNumberOverflow)?;
                     let tx_child = tx_child.derive_private_child(&context, child_number);
                     Ok(tx_child.into_private_key())

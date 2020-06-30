@@ -1,3 +1,7 @@
+//! This module contains the [`Output`] struct which represents a Bitcoin transaction output.
+//! It enjoys [`Encodable`] and [`Decodable`].
+
+
 use std::fmt;
 
 use bytes::{Buf, BufMut};
@@ -31,6 +35,7 @@ impl fmt::Display for DecodeError {
 
 /// Represents an output.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub struct Output {
     pub value: u64,
     pub script: Script,

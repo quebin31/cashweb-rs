@@ -1,16 +1,12 @@
+//! This module contains the [`ExtendedPublicKey`] and [`ExtendedPrivateKey`] structs which allow
+//! interaction with [`Hierarchical Deterministic Wallets`].
+//!
+//! [`Hierarchical Deterministic Wallets`]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+
 use std::convert::TryInto;
 
 use ring::hmac::{sign as hmac, Key as HmacKey, HMAC_SHA512};
-use secp256k1::{Error as SecpError, PublicKey, Secp256k1, SecretKey};
-
-/// A BIP32 error
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum Error {
-    /// Error creating a master seed --- for application use
-    RngError(String),
-    /// Invalid derivation path format.
-    InvalidDerivationPathFormat,
-}
+pub use secp256k1::{Error as SecpError, PublicKey, Secp256k1, SecretKey as PrivateKey};
 
 /// Error associated with child number construction.
 #[derive(Debug)]
@@ -20,12 +16,16 @@ pub struct IndexError(u32);
 #[derive(Debug)]
 pub struct HardenedDeriveError;
 
+/// Represents a child number.
 #[derive(Clone, Copy, Debug)]
 pub enum ChildNumber {
+    /// A "normal" child number is within range [0, 2^31)
     Normal(u32),
+    /// A "hardened" child number is within range [2^31, 2^32)
     Hardened(u32),
 }
 
+/// Error associated with the derivation of a [`ExtendedPublicKey`].
 #[derive(Debug)]
 pub enum DeriveError {
     /// Public key to public key derivation can not be performed for a hardened key.
@@ -35,11 +35,9 @@ pub enum DeriveError {
 }
 
 impl ChildNumber {
-    /// Create a [`Normal`] from an index, returns an error if the index is not within
-    /// [0, 2^31 - 1].
-    ///
-    /// [`Normal`]: #variant.Normal
-    pub fn from_normal_idx(index: u32) -> Result<Self, IndexError> {
+    /// Create a [`ChildNumber::Normal`] from an index, returns an error if the index is not within
+    /// [0, 2^31).
+    pub fn from_normal_index(index: u32) -> Result<Self, IndexError> {
         if index & (1 << 31) == 0 {
             Ok(ChildNumber::Normal(index))
         } else {
@@ -47,11 +45,9 @@ impl ChildNumber {
         }
     }
 
-    /// Create a [`Hardened`] from an index, returns an error if the index is not within
-    /// [0, 2^31 - 1].
-    ///
-    /// [`Hardened`]: #variant.Hardened
-    pub fn from_hardened_idx(index: u32) -> Result<Self, IndexError> {
+    /// Create a [`ChildNumber::Hardened`] from an index, returns an error if the index is not within
+    /// [2^31, 2^32).
+    pub fn from_hardened_index(index: u32) -> Result<Self, IndexError> {
         if index & (1 << 31) == 0 {
             Ok(ChildNumber::Hardened(index))
         } else {
@@ -70,6 +66,9 @@ impl From<u32> for ChildNumber {
     }
 }
 
+/// A wrapper around [`PublicKey`] to allow [`Hierarchical Deterministic Wallets`] public key derivation.
+///
+/// [`Hierarchical Deterministic Wallets`]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 #[derive(Clone, Debug)]
 pub struct ExtendedPublicKey {
     public_key: PublicKey,
@@ -85,21 +84,24 @@ impl ExtendedPublicKey {
         }
     }
 
+    /// Get the underlying [`PublicKey`].
     pub fn get_public_key(&self) -> &PublicKey {
         &self.public_key
     }
 
+    /// Convert into the underlying [`PublicKey`].
     pub fn into_public_key(self) -> PublicKey {
         self.public_key
     }
 
-    pub fn into_parts(&self) -> (&PublicKey, &[u8; 32]) {
-        (&self.public_key, &self.chain_code)
+    /// Convert into the [`PublicKey`] and chain code.
+    pub fn into_parts(&self) -> (PublicKey, [u8; 32]) {
+        (self.public_key, self.chain_code)
     }
 
-    /// Attempts to derive an extended public key from a path.
+    /// Attempts to derive an [`ExtendedPublicKey`] from a path.
     ///
-    /// The `path` argument can be both of type `DerivationPath` or `Vec<ChildNumber>`.
+    /// The `path` must consist of an iterable collection of [`ChildNumber`]s.
     pub fn derive_public_path<C: secp256k1::Verification, P>(
         &self,
         secp: &Secp256k1<C>,
@@ -120,7 +122,7 @@ impl ExtendedPublicKey {
         Ok(public_key)
     }
 
-    /// Derive child public key.
+    /// Derive the child [`ExtendedPublicKey`] from a [`ChildNumber`].
     pub fn derive_public_child<C: secp256k1::Verification>(
         &self,
         secp: &Secp256k1<C>,
@@ -134,7 +136,7 @@ impl ExtendedPublicKey {
         let data = [&self.public_key.serialize()[..], &index.to_be_bytes()[..]].concat();
         let hmac_result = hmac(&key, &data);
 
-        let private_key = secp256k1::SecretKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
+        let private_key = PrivateKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
         let chain_code: [u8; 32] = hmac_result.as_ref()[32..].try_into().unwrap(); // This is safe
         let mut public_key = self.public_key.clone();
         public_key
@@ -148,37 +150,42 @@ impl ExtendedPublicKey {
     }
 }
 
-#[derive(Copy, Clone)]
+/// A wrapper around [`PrivateKey`] to allow [`Hierarchical Deterministic Wallets`] public key derivation.
+///
+/// [`Hierarchical Deterministic Wallets`]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+#[derive(Debug, Copy, Clone)]
 pub struct ExtendedPrivateKey {
-    private_key: SecretKey,
+    private_key: PrivateKey,
     chain_code: [u8; 32],
 }
 
 impl ExtendedPrivateKey {
     /// Construct a new master private key.
-    pub fn new_master(private_key: SecretKey, chain_code: [u8; 32]) -> Self {
+    pub fn new_master(private_key: PrivateKey, chain_code: [u8; 32]) -> Self {
         ExtendedPrivateKey {
             private_key,
             chain_code,
         }
     }
 
-    /// Get private key.
-    pub fn get_private_key(&self) -> &SecretKey {
+    /// Get the underlying [`PrivateKey`].
+    pub fn get_private_key(&self) -> &PrivateKey {
         &self.private_key
     }
 
-    pub fn into_private_key(self) -> SecretKey {
+    /// Convert into the underlying [`PrivateKey`].
+    pub fn into_private_key(self) -> PrivateKey {
         self.private_key
     }
 
-    pub fn into_parts(&self) -> (&SecretKey, &[u8; 32]) {
-        (&self.private_key, &self.chain_code)
+    /// Convert into the [`PrivateKey`] and chain code.
+    pub fn into_parts(self) -> (PrivateKey, [u8; 32]) {
+        (self.private_key, self.chain_code)
     }
 
-    /// Attempts to derive an extended private key from a path.
+    /// Derive an child [`ExtendedPrivateKey`] from a path.
     ///
-    /// The `path` argument can be both of type `DerivationPath` or `Vec<ChildNumber>`.
+    /// The `path` must consist of an iterable collection of [`ChildNumber`]s.
     pub fn derive_private_path<C: secp256k1::Signing, P>(
         &self,
         secp: &Secp256k1<C>,
@@ -199,7 +206,7 @@ impl ExtendedPrivateKey {
         private_key
     }
 
-    /// Derive child private key.
+    /// Derive child [`ExtendedPrivateKey`].
     pub fn derive_private_child<C: secp256k1::Signing>(
         &self,
         secp: &Secp256k1<C>,
@@ -223,8 +230,7 @@ impl ExtendedPrivateKey {
         };
 
         // Construct new private key
-        let mut private_key =
-            secp256k1::SecretKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
+        let mut private_key = PrivateKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
         private_key.add_assign(&self.private_key[..]).unwrap(); // This is safe
 
         // Construct new extended private key

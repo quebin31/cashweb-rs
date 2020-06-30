@@ -1,13 +1,18 @@
+//! This module contains the [`VarInt`] struct which represents a variable-length integer.
+//! It enjoys [`Encodable`] and [`Decodable`].
+
 use std::fmt;
 
 use bytes::{Buf, BufMut};
 
 use super::{Decodable, Encodable};
 
-/// The error type associated with `VarInt` deserialization.
+/// The error type associated with [`VarInt`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Buffer supplied was too short
     TooShort,
+    /// The [`VarInt`] supplied was non-minimal.
     NonMinimal,
 }
 

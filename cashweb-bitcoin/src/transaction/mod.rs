@@ -1,3 +1,6 @@
+//! This module contains the primary structs related to Bitcoin transactions.
+//! All of them enjoy [`Encodable`] and [`Decodable`].
+
 pub mod input;
 pub mod outpoint;
 pub mod output;
@@ -18,6 +21,7 @@ pub use script::Script;
 
 /// Represents a transaction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub struct Transaction {
     pub version: u32,
     pub inputs: Vec<Input>,
@@ -27,6 +31,7 @@ pub struct Transaction {
 
 /// Enumerates the different signatuer hash types.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub enum SignatureHashType {
     All = 0x01,
     None = 0x02,
@@ -37,6 +42,7 @@ pub enum SignatureHashType {
 }
 
 impl SignatureHashType {
+    /// Checks whether the signature hash is `anyone-can-pay`.
     #[inline]
     pub fn is_anyone_can_pay(&self) -> bool {
         match self {
@@ -83,11 +89,13 @@ impl Transaction {
     }
 
     /// Calculate input count VarInt.
+    #[inline]
     fn input_count_varint(&self) -> VarInt {
         VarInt(self.inputs.len() as u64)
     }
 
-    /// Calculate output count length
+    /// Calculate output count length.
+    #[inline]
     fn output_count_varint(&self) -> VarInt {
         VarInt(self.outputs.len() as u64)
     }
@@ -220,11 +228,17 @@ impl Encodable for Transaction {
 /// The error type associated with `Transaction` deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Exhausted buffer when decoding `version` field.
     VersionTooShort,
+    /// Failed to decode input count [`VarInt`].
     InputCount(VarIntDecodeError),
+    /// Failed to decode an input.
     Input(InputDecodeError),
+    /// Failed to decode output count [`VarInt`].
     OutputCount(VarIntDecodeError),
+    /// Failed to decode an output.
     Output(OutputDecodeError),
+    /// Exhausted buffer when decoding `locktime` field.
     LockTimeTooShort,
 }
 

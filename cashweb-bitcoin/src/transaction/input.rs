@@ -1,3 +1,6 @@
+//! This module contains the [`Input`] struct which represents a Bitcoin transaction input.
+//! It enjoys [`Encodable`] and [`Decodable`].
+
 use std::fmt;
 
 use bytes::{Buf, BufMut};
@@ -14,9 +17,13 @@ use crate::{
 /// The error type associated with `Input` deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
+    /// Failed to decode [`Outpoint`].
     Outpoint(OutpointDecodeError),
+    /// Failed to decode script length [`VarInt`].
     ScriptLen(VarIntDecodeError),
+    /// Exhausted buffer when decoding `script` field.
     ScriptTooShort,
+    /// Exhausted buffer when decoding `sequence` field.
     SequenceTooShort,
 }
 
@@ -33,6 +40,7 @@ impl fmt::Display for DecodeError {
 
 /// Represents an input.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub struct Input {
     pub outpoint: Outpoint,
     pub script: Script,
