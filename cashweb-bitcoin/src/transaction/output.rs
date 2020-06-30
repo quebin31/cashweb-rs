@@ -1,7 +1,6 @@
 //! This module contains the [`Output`] struct which represents a Bitcoin transaction output.
 //! It enjoys [`Encodable`] and [`Decodable`].
 
-
 use std::fmt;
 
 use bytes::{Buf, BufMut};
