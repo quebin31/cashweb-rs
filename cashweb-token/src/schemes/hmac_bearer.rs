@@ -1,3 +1,5 @@
+//! This module contains [`HmacScheme`] which provides a rudimentary HMAC validation scheme.
+
 use std::fmt;
 
 use ring::hmac;
@@ -5,7 +7,9 @@ use ring::hmac;
 /// Error associated with basic HMAC token validation.
 #[derive(Debug)]
 pub enum ValidationError {
+    /// Failed to decode token.
     Base64(base64::DecodeError),
+    /// Token was invalid.
     Invalid,
 }
 
@@ -25,6 +29,7 @@ pub struct HmacScheme {
 }
 
 impl HmacScheme {
+    /// Create a new HMAC scheme using a speficied secret key.
     pub fn new(key: &[u8]) -> Self {
         let key = hmac::Key::new(hmac::HMAC_SHA256, key);
         Self { key }

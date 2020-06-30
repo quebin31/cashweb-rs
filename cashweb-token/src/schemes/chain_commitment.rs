@@ -1,3 +1,9 @@
+//! This module contains the [`ChainCommitmentScheme`] which provides the ability to validate POP 
+//! tokens given in the [`Keyserver Protocol`].
+//!
+//! [`Keyserver Protocol`]: https://github.com/cashweb/specifications/blob/master/keyserver-protocol/specification.mediawiki
+
+
 use std::{convert::TryInto, fmt};
 
 use bitcoin::{
@@ -12,13 +18,21 @@ use tower_service::Service;
 /// Error associated with token validation.
 #[derive(Debug)]
 pub enum ValidationError<E> {
+    /// Failed to decode token.
     Base64(base64::DecodeError),
+    /// Speficied script was unexpected length.
     IncorrectLength,
+    /// Token was invalid.
     Invalid,
+    /// Error occured when communicating with bitcoind.
     Node(NodeError<E>),
+    /// Specified output was not an `OP_RETURN`.
     NotOpReturn,
+    /// Specified output did not exist.
     OutputNotFound,
+    /// Error decoding specified transaction.
     Transaction(TransactionDecodeError),
+    /// Token was unexpected length.
     TokenLength,
 }
 
@@ -67,12 +81,14 @@ pub fn construct_token(tx_id: &[u8], vout: u32) -> String {
 }
 
 impl<S> ChainCommitmentScheme<S> {
+    /// Create a [`ChainCommitmentScheme`] from a [`BitcoinClient`].
     pub fn from_client(client: BitcoinClient<S>) -> Self {
         ChainCommitmentScheme { client }
     }
 }
 
 impl ChainCommitmentScheme<HttpClient> {
+    /// Create a [`ChainCommitmentScheme`] from a [`BitcoinClient`] using a standard HTTP connector.
     pub fn new(endpoint: String, username: String, password: String) -> Self {
         Self {
             client: BitcoinClient::new(endpoint, username, password),
@@ -81,6 +97,7 @@ impl ChainCommitmentScheme<HttpClient> {
 }
 
 impl ChainCommitmentScheme<HttpsClient> {
+    /// Create a [`ChainCommitmentScheme`] from a [`BitcoinClient`] using a standard HTTPS connector.
     pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
         Self {
             client: BitcoinClient::new_tls(endpoint, username, password),
