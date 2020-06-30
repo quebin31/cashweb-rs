@@ -1,19 +1,23 @@
+//!
+
 pub mod services;
 
-use crate::models::*;
-pub use services::*;
-
 use async_trait::async_trait;
-use hyper::{http::uri::InvalidUri, Client as HyperClient};
+use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient};
 use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
+use crate::models::*;
+use services::*;
+
 /// Error associated with sending a request to a keyserver.
 #[derive(Debug)]
 pub enum KeyserverError<E> {
+    /// Invalid URI.
     Uri(InvalidUri),
+    /// Error executing the service method.
     Error(E),
 }
 
@@ -23,22 +27,27 @@ impl<E> From<E> for KeyserverError<E> {
     }
 }
 
-/// The AddressMetadata paired with its PublicKey.
+/// The [`AddressMetadata`] paired with its PublicKey.
 #[derive(Clone, Debug)]
-pub struct PairedMetadata {
+pub struct MetadataPackage {
+    /// POP token attached to the response.
     pub token: String,
+    /// Public key of the metadata.
     pub public_key: PublicKey,
+    /// The address metadata.
     pub metadata: AddressMetadata,
 }
 
-/// KeyserverClient allows queries to specific keyservers.
+/// `KeyserverClient` allows queries to specific keyservers.
 #[derive(Clone, Debug)]
 pub struct KeyserverClient<S> {
     inner_client: S,
 }
 
 impl<S> KeyserverClient<S> {
-    /// Create a new client from a service.
+    /// Create a new client from a [`Service`].
+    ///
+    /// [`Service`]: tower_service::Service
     pub fn from_service(service: S) -> Self {
         Self {
             inner_client: service,
@@ -65,28 +74,37 @@ impl KeyserverClient<HyperClient<HttpsConnector<HttpConnector>>> {
     }
 }
 
+/// An interface for getting [`Peers`] from a keyserver.
 #[async_trait]
 pub trait GetPeersInterface {
+    /// Error associated with getting [`Peers`].
     type Error;
-    /// Get peers from a keyserver.
+
+    /// Get [`Peers`] from a keyserver.
     async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, Self::Error>;
 }
 
+/// An interface for getting [`AddressMetadata`] from a keyserver.
 #[async_trait]
 pub trait GetMetadataInterface {
+    /// Error associated with getting [`AddressMetadata`].
     type Error;
 
+    /// Get [`AddressMetadata`] from a server. The result is wrapped in [`MetadataPackage`].
     async fn get_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
-    ) -> Result<PairedMetadata, Self::Error>;
+    ) -> Result<MetadataPackage, Self::Error>;
 }
 
+/// An interface for putting [`AddressMetadata`] to a keyserver.
 #[async_trait]
 pub trait PutMetadataInterface {
+    /// Error associated with putting [`AddressMetadata`].
     type Error;
 
+    /// Put [`AddressMetadata`] to a keyserver.
     async fn put_metadata(
         &self,
         keyserver_url: &str,
@@ -123,7 +141,7 @@ where
 #[async_trait]
 impl<S> GetMetadataInterface for S
 where
-    S: Service<(Uri, GetMetadata), Response = PairedMetadata>,
+    S: Service<(Uri, GetMetadata), Response = MetadataPackage>,
     S: Sync + Clone + Send + 'static,
     S::Future: Send + Sync + 'static,
 {
@@ -134,7 +152,7 @@ where
         &self,
         keyserver_url: &str,
         address: &str,
-    ) -> Result<PairedMetadata, KeyserverError<<Self as Service<(Uri, GetMetadata)>>::Error>> {
+    ) -> Result<MetadataPackage, KeyserverError<<Self as Service<(Uri, GetMetadata)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;

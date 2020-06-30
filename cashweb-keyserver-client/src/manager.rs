@@ -9,7 +9,7 @@ use tower_service::Service;
 use tower_util::ServiceExt;
 
 use crate::{
-    client::{services::*, KeyserverClient, PairedMetadata},
+    client::{services::*, KeyserverClient, MetadataPackage},
     models::{AddressMetadata, Peer, Peers},
 };
 
@@ -56,7 +56,9 @@ pub fn uniform_random_sampler(uris: &[Uri], size: usize) -> Vec<Uri> {
 /// Select best [`AuthWrapper`] from a list.
 ///
 /// Panics if empty slice is given.
-pub fn select_auth_wrapper(metadatas: Vec<(Uri, PairedMetadata)>) -> (Uri, PairedMetadata) {
+///
+/// [`AuthWrapper`]: auth_wrapper::AuthWrapper
+pub fn select_auth_wrapper(metadatas: Vec<(Uri, MetadataPackage)>) -> (Uri, MetadataPackage) {
     metadatas
         .into_iter()
         .max_by_key(move |(_, pair)| pair.metadata.timestamp)
@@ -76,8 +78,11 @@ pub fn aggregate_peers(peers: Vec<(Uri, Peers)>) -> Peers {
 /// Response to a sample query.
 #[derive(Debug)]
 pub struct SampleResponse<R, E> {
+    /// The [`Uri`] of the selected keyserver.
     pub uri: Uri,
+    /// The selected response from the sample.
     pub response: R,
+    /// The errors paired with the [`Uri`] of the keyserver they originated at.
     pub errors: Vec<(Uri, E)>,
 }
 
@@ -115,7 +120,9 @@ where
 /// Response to an aggregation query.
 #[derive(Debug)]
 pub struct AggregateResponse<R, E> {
+    /// The aggregated response of the sample.
     pub response: R,
+    /// The errors paired with the [`Uri`] of the keyserver they originated at.
     pub errors: Vec<(Uri, E)>,
 }
 
@@ -158,7 +165,7 @@ where
         &self,
         sample_size: usize,
     ) -> Result<
-        SampleResponse<PairedMetadata, <KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
+        SampleResponse<MetadataPackage, <KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
     > {
         let uris = uniform_random_sampler(&self.uris, sample_size);

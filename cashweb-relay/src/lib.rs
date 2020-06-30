@@ -295,7 +295,7 @@ impl ParsedMessage {
 
     /// Verify the stamp, authenticate the HMAC payload, and then decrypt and decode the payload.
     ///
-    /// This is done in-place, replacing the encrypted [payload] field with the plain text.
+    /// This is done in-place, replacing the encrypted `payload` field with the plain text.
     #[inline]
     pub fn open_in_place(
         &mut self,

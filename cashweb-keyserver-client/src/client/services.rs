@@ -1,3 +1,5 @@
+//! This module contains lower-level primitives for working with the [`KeyserverClient`].
+
 use std::{fmt, pin::Pin};
 
 use futures_core::{
@@ -16,14 +18,14 @@ pub use hyper::{
 use prost::{DecodeError, Message as _};
 use tower_service::Service;
 
-use super::{KeyserverClient, PairedMetadata};
+use super::{KeyserverClient, MetadataPackage};
 use crate::models::*;
 
 type FutResponse<Response, Error> =
     Pin<Box<dyn Future<Output = Result<Response, Error>> + 'static + Send>>;
 
 /// Represents a request for the Peers object.
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetPeers;
 
 /// The error associated with getting Peers from a keyserver.
@@ -85,19 +87,19 @@ where
 }
 
 /// Represents a request for the Metadata object.
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMetadata;
 
 /// The error associated with getting Metadata from a keyserver.
 #[derive(Debug)]
 pub enum GetMetadataError<E> {
-    // Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
+    /// Error while decoding the [`AddressMetadata`]
     MetadataDecode(DecodeError),
-    /// Error while decoding the [AuthWrapper](struct.AuthWrapper.html).
+    /// Error while decoding the [`AuthWrapper`].
     AuthWrapperDecode(DecodeError),
-    /// Error while parsing the [AuthWrapper](struct.AuthWrapper.html).
+    /// Error while parsing the [`AuthWrapper`].
     AuthWrapperParse(ParseError),
-    /// Error while parsing the [AuthWrapper](struct.AuthWrapper.html).
+    /// Error while parsing the [`AuthWrapper`].
     AuthWrapperVerify(VerifyError),
     /// Error while processing the body.
     Body(HyperError),
@@ -117,7 +119,7 @@ where
     S: Send + Clone + 'static,
     <S as Service<Request<Body>>>::Future: Send,
 {
-    type Response = PairedMetadata;
+    type Response = MetadataPackage;
     type Error = GetMetadataError<S::Error>;
     type Future = FutResponse<Self::Response, Self::Error>;
 
@@ -178,7 +180,7 @@ where
             let metadata = AddressMetadata::decode(&mut parsed_auth_wrapper.payload.as_slice())
                 .map_err(Self::Error::MetadataDecode)?;
 
-            Ok(PairedMetadata {
+            Ok(MetadataPackage {
                 token,
                 public_key: parsed_auth_wrapper.public_key,
                 metadata,
@@ -188,7 +190,8 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+/// Error associated with putting [`AddressMetadata`] to the keyserver.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PutMetadataError<E> {
     /// A connection error occured.
     Service(E),
@@ -196,9 +199,12 @@ pub enum PutMetadataError<E> {
     UnexpectedStatusCode(u16),
 }
 
-#[derive(Clone, Debug)]
+/// Request for putting [`AddressMetadata`] to the keyserver.
+#[derive(Debug, Clone, PartialEq)]
 pub struct PutMetadata {
+    /// POP authorization token.
     pub token: String,
+    /// The [`AddressMetadata`] to be put to the keyserver.
     pub metadata: AddressMetadata,
 }
 
@@ -252,15 +258,21 @@ where
     }
 }
 
+/// Request for performing multiple requests to a range of keyservers.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SampleRequest<T> {
+    /// The [`Uri`]s of the targetted keyservers.
     pub uris: Vec<Uri>,
+    /// The request to be broadcast.
     pub request: T,
 }
 
 /// Error associated with sending sample requests.
 #[derive(Debug)]
 pub enum SampleError<E> {
+    /// Error while polling service.
     Poll(E),
+    /// Sample totally failed. Contains errors paired with the [`Uri`] of the keyserver they originated at.
     Sample(Vec<(Uri, E)>),
 }
 

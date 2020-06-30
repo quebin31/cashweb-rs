@@ -13,10 +13,14 @@
 use std::fmt;
 
 use hex::FromHexError;
-use hyper::{Body, Client as HyperClient, Request as HttpRequest, Response as HttpResponse};
-pub use json_rpc::{
+use hyper::{
+    client::HttpConnector, Body, Client as HyperClient, Request as HttpRequest,
+    Response as HttpResponse,
+};
+use hyper_tls::HttpsConnector;
+use json_rpc::{
     clients::{
-        http::{Client as JsonClient, ConnectionError, HttpConnector, HttpsConnector},
+        http::{Client as JsonClient, ConnectionError},
         Error,
     },
     prelude::{JsonError, RequestFactory, RpcError},
@@ -34,15 +38,27 @@ pub type HttpsClient = HyperClient<HttpsConnector<HttpConnector>>;
 #[derive(Clone, Debug)]
 pub struct BitcoinClient<S>(JsonClient<S>);
 
+impl<S> BitcoinClient<S> {
+    /// Create a new [`BitcoinClient`] using a user-defined client service.
+    pub fn from_service(service: S, endpoint: String, username: String, password: String) -> Self {
+        BitcoinClient(JsonClient::from_service(
+            service,
+            endpoint,
+            Some(username),
+            Some(password),
+        ))
+    }
+}
+
 impl BitcoinClient<HyperClient<HttpConnector>> {
-    /// Construct a new `BitcoinClient` using a HTTP connector.
+    /// Create a new HTTP [`BitcoinClient`].
     pub fn new(endpoint: String, username: String, password: String) -> Self {
         BitcoinClient(JsonClient::new(endpoint, Some(username), Some(password)))
     }
 }
 
 impl BitcoinClient<HyperClient<HttpsConnector<HttpConnector>>> {
-    /// Construct a new `BitcoinClient` using a HTTPS connector.
+    /// Create a new HTTPS [`BitcoinClient`].
     pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
         BitcoinClient(JsonClient::new_tls(
             endpoint,
