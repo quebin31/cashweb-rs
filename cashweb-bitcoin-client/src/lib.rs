@@ -13,30 +13,47 @@
 use std::fmt;
 
 use hex::FromHexError;
-use json_rpc::prelude::*;
-pub use json_rpc::{clients::http::{HttpConnector, HttpsConnector}, prelude::Connect};
+use hyper::{Body, Client as HyperClient, Request as HttpRequest, Response as HttpResponse};
+pub use json_rpc::{
+    clients::{
+        http::{Client as JsonClient, ConnectionError, HttpConnector, HttpsConnector},
+        Error,
+    },
+    prelude::{JsonError, RequestFactory, RpcError},
+};
 use serde_json::Value;
+use tower_service::Service;
+
+/// Standard HTTP client
+pub type HttpClient = HyperClient<HttpConnector>;
+
+/// Standard HTTPs client
+pub type HttpsClient = HyperClient<HttpsConnector<HttpConnector>>;
 
 /// Basic Bitcoin JSON-RPC client.
 #[derive(Clone, Debug)]
-pub struct BitcoinClient<C>(HttpClient<C>);
+pub struct BitcoinClient<S>(JsonClient<S>);
 
-impl BitcoinClient<HttpConnector> {
+impl BitcoinClient<HyperClient<HttpConnector>> {
     /// Construct a new `BitcoinClient` using a HTTP connector.
     pub fn new(endpoint: String, username: String, password: String) -> Self {
-        BitcoinClient(HttpClient::new(endpoint, Some(username), Some(password)))
+        BitcoinClient(JsonClient::new(endpoint, Some(username), Some(password)))
     }
 }
 
-impl BitcoinClient<HttpsConnector<HttpConnector>> {
+impl BitcoinClient<HyperClient<HttpsConnector<HttpConnector>>> {
     /// Construct a new `BitcoinClient` using a HTTPS connector.
     pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
-        BitcoinClient(HttpClient::new_tls(endpoint, Some(username), Some(password)))
+        BitcoinClient(JsonClient::new_tls(
+            endpoint,
+            Some(username),
+            Some(password),
+        ))
     }
 }
 
 impl<C> std::ops::Deref for BitcoinClient<C> {
-    type Target = HttpClient<C>;
+    type Target = JsonClient<C>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -45,9 +62,9 @@ impl<C> std::ops::Deref for BitcoinClient<C> {
 
 /// The error type associated with the Bitcoin RPC.
 #[derive(Debug)]
-pub enum NodeError {
+pub enum NodeError<E> {
     /// Error connecting to bitcoind.
-    Http(HttpError),
+    Http(Error<ConnectionError<E>>),
     /// bitcoind responded with an JSON-RPC error.
     Rpc(RpcError),
     /// Failed to deserialize response JSON.
@@ -58,13 +75,13 @@ pub enum NodeError {
     HexDecode(FromHexError),
 }
 
-impl From<FromHexError> for NodeError {
+impl<E> From<FromHexError> for NodeError<E> {
     fn from(err: FromHexError) -> Self {
         Self::HexDecode(err)
     }
 }
 
-impl fmt::Display for NodeError {
+impl<E: fmt::Display> fmt::Display for NodeError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Http(err) => err.fmt(f),
@@ -76,12 +93,14 @@ impl fmt::Display for NodeError {
     }
 }
 
-impl<C> BitcoinClient<C>
+impl<S> BitcoinClient<S>
 where
-    C: Connect + Clone + Send + Sync + 'static,
+    S: Service<HttpRequest<Body>, Response = HttpResponse<Body>> + Clone,
+    S::Error: 'static,
+    S::Future: Send + 'static,
 {
     /// Calls the `getnewaddress` method.
-    pub async fn get_new_addr(&self) -> Result<String, NodeError> {
+    pub async fn get_new_addr(&self) -> Result<String, NodeError<S::Error>> {
         let request = self
             .build_request()
             .method("getnewaddress")
@@ -98,7 +117,7 @@ where
     }
 
     /// Calls the `sendrawtransaction` method.
-    pub async fn send_tx(&self, raw_tx: &[u8]) -> Result<String, NodeError> {
+    pub async fn send_tx(&self, raw_tx: &[u8]) -> Result<String, NodeError<S::Error>> {
         let request = self
             .build_request()
             .method("sendrawtransaction")
@@ -117,7 +136,7 @@ where
     }
 
     /// Calls the `getrawtransaction` method.
-    pub async fn get_raw_transaction(&self, tx_id: &[u8]) -> Result<Vec<u8>, NodeError> {
+    pub async fn get_raw_transaction(&self, tx_id: &[u8]) -> Result<Vec<u8>, NodeError<S::Error>> {
         let request = self
             .build_request()
             .method("getrawtransaction")
