@@ -28,7 +28,7 @@ type FutResponse<Response, Error> =
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetPeers;
 
-/// The error associated with getting Peers from a keyserver.
+/// Error associated with getting Peers from a keyserver.
 #[derive(Debug)]
 pub enum GetPeersError<E> {
     /// Error while processing the body.
@@ -90,7 +90,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMetadata;
 
-/// The error associated with getting Metadata from a keyserver.
+/// Error associated with getting Metadata from a keyserver.
 #[derive(Debug)]
 pub enum GetMetadataError<E> {
     /// Error while decoding the [`AddressMetadata`]

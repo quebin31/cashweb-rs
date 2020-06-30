@@ -3,7 +3,7 @@ use std::{fmt, sync::Arc, time::Duration};
 use dashmap::DashMap;
 use tokio::time::delay_for;
 
-/// The error type associated with the `Wallet` receiving outputs.
+/// Error associated with the `Wallet` receiving outputs.
 #[derive(Debug)]
 pub enum WalletError {
     NotFound,

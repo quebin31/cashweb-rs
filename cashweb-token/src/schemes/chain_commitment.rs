@@ -9,7 +9,7 @@ use hyper::{Body, Request as HttpRequest, Response as HttpResponse};
 use ring::digest::{Context, SHA256};
 use tower_service::Service;
 
-/// The error type associated with token validation.
+/// Error associated with token validation.
 #[derive(Debug)]
 pub enum ValidationError<E> {
     Base64(base64::DecodeError),

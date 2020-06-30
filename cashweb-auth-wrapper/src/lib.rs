@@ -36,7 +36,7 @@ pub struct ParsedAuthWrapper {
     pub payload_digest: [u8; 32],
 }
 
-/// The error associated with validation and parsing of the [`AuthWrapper`].
+/// Error associated with validation and parsing of the [`AuthWrapper`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     /// The public key provided was invalid.

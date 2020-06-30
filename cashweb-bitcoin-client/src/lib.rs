@@ -76,7 +76,7 @@ impl<C> std::ops::Deref for BitcoinClient<C> {
     }
 }
 
-/// The error type associated with the Bitcoin RPC.
+/// Error associated with the Bitcoin RPC.
 #[derive(Debug)]
 pub enum NodeError<E> {
     /// Error connecting to bitcoind.

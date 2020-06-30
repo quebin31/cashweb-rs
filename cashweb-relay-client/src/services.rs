@@ -27,7 +27,7 @@ type ResponseFuture<Response, Error> =
 #[derive(Clone, Debug)]
 pub struct GetProfile;
 
-/// The error associated with getting a Profile from a relay server.
+/// Error associated with getting a Profile from a relay server.
 #[derive(Debug)]
 pub enum GetProfileError<E> {
     // Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
