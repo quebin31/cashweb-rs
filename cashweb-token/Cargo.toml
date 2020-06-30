@@ -13,7 +13,10 @@ categories = ["development-tools"]
 [dependencies]
 base64 = "0.12.3"
 http = "0.2.1"
+hyper = { version = "0.13.6", features = ["stream"] }
+hyper-tls = "0.4.1"
 ring = "0.16.15"
+tower-service = "0.3.0"
 
-bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
-bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
+bitcoin-client = { version = "0.1.0-alpha.1", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
+bitcoin = { version = "0.1.0-alpha.1", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }

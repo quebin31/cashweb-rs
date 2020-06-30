@@ -4,23 +4,25 @@ use bitcoin::{
     prelude::{Transaction, TransactionDecodeError},
     Decodable,
 };
-use bitcoin_client::{BitcoinClient, HttpConnector, NodeError};
+use bitcoin_client::{BitcoinClient, HttpClient, HttpsClient, NodeError};
+use hyper::{Body, Request as HttpRequest, Response as HttpResponse};
 use ring::digest::{Context, SHA256};
+use tower_service::Service;
 
 /// The error type associated with token validation.
 #[derive(Debug)]
-pub enum ValidationError {
+pub enum ValidationError<E> {
     Base64(base64::DecodeError),
     IncorrectLength,
     Invalid,
-    Node(NodeError),
+    Node(NodeError<E>),
     NotOpReturn,
     OutputNotFound,
     Transaction(TransactionDecodeError),
     TokenLength,
 }
 
-impl fmt::Display for ValidationError {
+impl<E: fmt::Display> fmt::Display for ValidationError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match self {
             Self::Base64(err) => return err.fmt(f),
@@ -38,8 +40,8 @@ impl fmt::Display for ValidationError {
 
 /// Chain commitment scheme used in the keyserver protocol.
 #[derive(Clone, Debug)]
-pub struct ChainCommitmentScheme<C> {
-    client: BitcoinClient<C>,
+pub struct ChainCommitmentScheme<S> {
+    client: BitcoinClient<S>,
 }
 
 const COMMITMENT_LEN: usize = 32;
@@ -64,26 +66,41 @@ pub fn construct_token(tx_id: &[u8], vout: u32) -> String {
     base64::encode_config(raw_token, url_safe_config)
 }
 
-impl<C> ChainCommitmentScheme<C> {
-    pub fn from_client(client: BitcoinClient<C>) -> Self {
+impl<S> ChainCommitmentScheme<S> {
+    pub fn from_client(client: BitcoinClient<S>) -> Self {
         ChainCommitmentScheme { client }
     }
 }
 
-impl ChainCommitmentScheme<HttpConnector> {
+impl ChainCommitmentScheme<HttpClient> {
     pub fn new(endpoint: String, username: String, password: String) -> Self {
         Self {
             client: BitcoinClient::new(endpoint, username, password),
         }
     }
+}
 
+impl ChainCommitmentScheme<HttpsClient> {
+    pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
+        Self {
+            client: BitcoinClient::new_tls(endpoint, username, password),
+        }
+    }
+}
+
+impl<S> ChainCommitmentScheme<S>
+where
+    S: Service<HttpRequest<Body>, Response = HttpResponse<Body>> + Clone,
+    S::Error: 'static,
+    S::Future: Send + 'static,
+{
     /// Validate a token.
     pub async fn validate_token(
         &self,
         pub_key_hash: &[u8],
         address_metadata_hash: &[u8],
         token: &str,
-    ) -> Result<Vec<u8>, ValidationError> {
+    ) -> Result<Vec<u8>, ValidationError<S::Error>> {
         let url_safe_config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let outpoint_raw =
             base64::decode_config(token, url_safe_config).map_err(ValidationError::Base64)?;
