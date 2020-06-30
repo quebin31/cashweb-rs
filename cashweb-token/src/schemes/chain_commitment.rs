@@ -1,8 +1,7 @@
-//! This module contains the [`ChainCommitmentScheme`] which provides the ability to validate POP 
+//! This module contains the [`ChainCommitmentScheme`] which provides the ability to validate POP
 //! tokens given in the [`Keyserver Protocol`].
 //!
 //! [`Keyserver Protocol`]: https://github.com/cashweb/specifications/blob/master/keyserver-protocol/specification.mediawiki
-
 
 use std::{convert::TryInto, fmt};
 
