@@ -28,7 +28,7 @@ impl Encodable for Outpoint {
     }
 }
 
-/// The error type associated with [`Outpoint`] deserialization.
+/// Error associated with [`Outpoint`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DecodeError;
 

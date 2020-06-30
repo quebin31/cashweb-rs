@@ -7,7 +7,7 @@ use bytes::{Buf, BufMut};
 
 use super::{Decodable, Encodable};
 
-/// The error type associated with [`VarInt`] deserialization.
+/// Error associated with [`VarInt`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Buffer supplied was too short
@@ -46,6 +46,7 @@ impl Encodable for VarInt {
         }
     }
 
+    #[inline]
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
         match self.0 {
             0..=0xfc => {
@@ -71,6 +72,7 @@ impl Decodable for VarInt {
     type Error = DecodeError;
 
     /// Parse variable-length integer.
+    #[inline]
     fn decode<B: Buf>(buf: &mut B) -> Result<Self, Self::Error> {
         if !buf.has_remaining() {
             return Err(Self::Error::TooShort);

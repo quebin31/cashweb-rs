@@ -12,3 +12,8 @@ serde = { version = "1.0.114", features = ["derive"] }
 
 [dev-dependencies]
 hex = "0.4.2"
+criterion = "0.3"
+
+[[bench]]
+name = "transaction"
+harness = false

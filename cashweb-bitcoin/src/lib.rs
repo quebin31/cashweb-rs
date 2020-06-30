@@ -32,6 +32,7 @@ pub trait Encodable: Sized {
     fn encoded_len(&self) -> usize;
 
     /// Encodes structure to a buffer.
+    #[inline]
     fn encode<B: BufMut>(&self, buf: &mut B) -> Result<(), InsufficientCapacity> {
         if buf.remaining_mut() < self.encoded_len() {
             return Err(InsufficientCapacity);

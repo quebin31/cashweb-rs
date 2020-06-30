@@ -14,7 +14,7 @@ use crate::{
     Decodable, Encodable,
 };
 
-/// The error type associated with [`Input`] deserialization.
+/// Error associated with [`Input`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Failed to decode [`Outpoint`].
@@ -68,6 +68,7 @@ impl Encodable for Input {
 impl Decodable for Input {
     type Error = DecodeError;
 
+    #[inline]
     fn decode<B: Buf>(mut buf: &mut B) -> Result<Self, Self::Error> {
         // Parse outpoint
         let outpoint = Outpoint::decode(&mut buf).map_err(Self::Error::Outpoint)?;

@@ -228,7 +228,7 @@ impl Encodable for Transaction {
     }
 }
 
-/// The error type associated with [`Transaction`] deserialization.
+/// Error associated with [`Transaction`] deserialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// Exhausted buffer when decoding `version` field.
