@@ -270,46 +270,104 @@ where
     }
 }
 
+/// Request for putting [`AuthWrapper`] to the keyserver.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PutAuthWrapper {
+    /// POP authorization token.
+    pub token: String,
+    /// The [`AuthWrapper`] to be put to the keyserver.
+    pub auth_wrapper: AuthWrapper,
+}
+
 /// Error associated with putting [`AddressMetadata`] to the keyserver.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PutMetadataError<E> {
+pub enum PutAuthWrapperError<E> {
     /// A connection error occured.
     Service(E),
     /// Unexpected status code.
     UnexpectedStatusCode(u16),
 }
 
-/// Request for putting [`AddressMetadata`] to the keyserver.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PutMetadata {
-    /// POP authorization token.
-    pub token: String,
-    /// The [`AddressMetadata`] to be put to the keyserver.
-    pub metadata: AddressMetadata,
-}
-
-impl<S> Service<(Uri, PutMetadata)> for KeyserverClient<S>
+impl<S> Service<(Uri, PutAuthWrapper)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
     <S as Service<Request<Body>>>::Future: Send,
 {
     type Response = ();
-    type Error = PutMetadataError<S::Error>;
+    type Error = PutAuthWrapperError<S::Error>;
     type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
             .poll_ready(context)
-            .map_err(PutMetadataError::Service)
+            .map_err(PutAuthWrapperError::Service)
     }
 
-    fn call(&mut self, (uri, request): (Uri, PutMetadata)) -> Self::Future {
+    fn call(&mut self, (uri, request): (Uri, PutAuthWrapper)) -> Self::Future {
         let mut client = self.inner_client.clone();
 
         // Construct body
-        let mut body = Vec::with_capacity(request.metadata.encoded_len());
-        request.metadata.encode(&mut body).unwrap();
+        let mut body = Vec::with_capacity(request.auth_wrapper.encoded_len());
+        request.auth_wrapper.encode(&mut body).unwrap();
+
+        let http_request = Request::builder()
+            .method(Method::PUT)
+            .uri(uri)
+            .header(AUTHORIZATION, request.token)
+            .body(Body::from(body))
+            .unwrap(); // This is safe
+
+        let fut = async move {
+            // Get response
+            let response = client
+                .call(http_request)
+                .await
+                .map_err(Self::Error::Service)?;
+
+            // Check status code
+            // TODO: Fix this
+            match response.status() {
+                StatusCode::OK => (),
+                code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
+            }
+
+            Ok(())
+        };
+        Box::pin(fut)
+    }
+}
+
+/// Request for putting a raw [`AuthWrapper`] to the keyserver.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PutRawAuthWrapper {
+    /// POP authorization token.
+    pub token: String,
+    /// The raw [`AuthWrapper`] to be put to the keyserver.
+    pub raw_auth_wrapper: Vec<u8>,
+}
+
+impl<S> Service<(Uri, PutRawAuthWrapper)> for KeyserverClient<S>
+where
+    S: Service<Request<Body>, Response = Response<Body>>,
+    S: Send + Clone + 'static,
+    <S as Service<Request<Body>>>::Future: Send,
+{
+    type Response = ();
+    type Error = PutAuthWrapperError<S::Error>;
+    type Future = FutResponse<Self::Response, Self::Error>;
+
+    fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner_client
+            .poll_ready(context)
+            .map_err(PutAuthWrapperError::Service)
+    }
+
+    fn call(&mut self, (uri, request): (Uri, PutRawAuthWrapper)) -> Self::Future {
+        let mut client = self.inner_client.clone();
+
+        // Construct body
+        let body = request.raw_auth_wrapper;
 
         let http_request = Request::builder()
             .method(Method::PUT)

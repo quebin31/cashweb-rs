@@ -4,6 +4,7 @@ use hyper::{
     client::HttpConnector, http::uri::InvalidUri, Body, Client as HyperClient, Request, Response,
     Uri,
 };
+use prost::Message as _;
 use rand::seq::SliceRandom;
 use tokio::sync::RwLock;
 use tower_service::Service;
@@ -11,7 +12,7 @@ use tower_util::ServiceExt;
 
 use crate::{
     client::{services::*, KeyserverClient, MetadataPackage},
-    models::{AddressMetadata, Peer, Peers},
+    models::{AuthWrapper, Peer, Peers},
 };
 
 /// KeyserverManager wraps a client and allows sampling and selecting of queries across a set of keyservers.
@@ -263,17 +264,24 @@ where
     /// Perform a uniform broadcast of metadata over keyservers and select the latest.
     pub async fn uniform_broadcast_metadata(
         &self,
-        metadata: AddressMetadata,
+        auth_wrapper: AuthWrapper,
         token: String,
         sample_size: usize,
     ) -> Result<
-        AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
-        SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
+        AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutAuthWrapper)>>::Error>,
+        SampleError<<KeyserverClient<S> as Service<(Uri, PutAuthWrapper)>>::Error>,
     > {
         let read_uris = self.uris.read().await;
         let uris = uniform_random_sampler(&read_uris, sample_size);
 
-        let request = PutMetadata { token, metadata };
+        // Construct body
+        let mut raw_auth_wrapper = Vec::with_capacity(auth_wrapper.encoded_len());
+        auth_wrapper.encode(&mut raw_auth_wrapper).unwrap();
+
+        let request = PutRawAuthWrapper {
+            token,
+            raw_auth_wrapper,
+        };
         let sample_request = SampleRequest { uris, request };
         let responses = self.inner_client.clone().call(sample_request).await?;
 

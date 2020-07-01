@@ -144,24 +144,65 @@ where
 
 impl<S> KeyserverClient<S>
 where
-    Self: Service<(Uri, PutMetadata), Response = ()>,
+    Self: Service<(Uri, PutAuthWrapper), Response = ()>,
     Self: Sync + Clone + Send + 'static,
-    <Self as Service<(Uri, PutMetadata)>>::Future: Send + Sync + 'static,
+    <Self as Service<(Uri, PutAuthWrapper)>>::Future: Send + Sync + 'static,
 {
-    /// Put [`AddressMetadata`] to a keyserver.
+    /// Put [`AuthWrapper`] to a keyserver.
     pub async fn put_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
-        metadata: AddressMetadata,
+        auth_wrapper: AuthWrapper,
         token: String,
-    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutMetadata)>>::Error>> {
+    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutAuthWrapper)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
 
         // Construct request
-        let request = (uri, PutMetadata { token, metadata });
+        let request = (
+            uri,
+            PutAuthWrapper {
+                token,
+                auth_wrapper,
+            },
+        );
+
+        // Get response
+        self.clone()
+            .oneshot(request)
+            .await
+            .map_err(KeyserverError::Error)
+    }
+}
+
+impl<S> KeyserverClient<S>
+where
+    Self: Service<(Uri, PutRawAuthWrapper), Response = ()>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, PutRawAuthWrapper)>>::Future: Send + Sync + 'static,
+{
+    /// Put raw [`AuthWrapper`] to a keyserver.
+    pub async fn put_raw_metadata(
+        &self,
+        keyserver_url: &str,
+        address: &str,
+        raw_auth_wrapper: Vec<u8>,
+        token: String,
+    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutRawAuthWrapper)>>::Error>> {
+        // Construct URI
+        let full_path = format!("{}/keys/{}", keyserver_url, address);
+        let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
+
+        // Construct request
+        let request = (
+            uri,
+            PutRawAuthWrapper {
+                token,
+                raw_auth_wrapper,
+            },
+        );
 
         // Get response
         self.clone()
