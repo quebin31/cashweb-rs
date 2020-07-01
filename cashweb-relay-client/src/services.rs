@@ -25,16 +25,16 @@ use relay::{MessagePage, Profile};
 type ResponseFuture<Response, Error> =
     Pin<Box<dyn Future<Output = Result<Response, Error>> + 'static + Send>>;
 
-/// Represents a request for the Profile object.
+/// Represents a request for the [`Profile`] object.
 #[derive(Clone, Debug)]
 pub struct GetProfile;
 
-/// Error associated with getting a Profile from a relay server.
+/// Error associated with getting a [`Profile`] from a relay server.
 #[derive(Debug)]
 pub enum GetProfileError<E> {
-    /// Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
+    /// Error while decoding the [`Profile`]
     MetadataDecode(DecodeError),
-    /// Error while decoding the [AuthWrapper](struct.AuthWrapper.html).
+    /// Error while decoding the [`AuthWrapper`].
     AuthWrapperDecode(DecodeError),
     /// Error while processing the body.
     Body(HyperError),
@@ -162,7 +162,7 @@ where
     }
 }
 
-/// Error associated with putting a [`Message`] to the relay server.
+/// Error associated with getting a [`MessagePage`] to the relay server.
 #[derive(Debug)]
 pub enum GetMessageError<E> {
     /// A connection error occured.
@@ -171,11 +171,11 @@ pub enum GetMessageError<E> {
     UnexpectedStatusCode(u16),
     /// Error while processing the body.
     Body(HyperError),
-    /// Error while decoding the [MessagePage](struct.MessagePage.html).
+    /// Error while decoding the [`MessagePage`].
     MessagePageDecode(DecodeError),
 }
 
-/// Represents a request for the [`Message`]s.
+/// Represents a request for a [`MessagePage`].
 #[derive(Clone, Debug)]
 pub struct GetMessages {
     /// POP token attached to the request.
