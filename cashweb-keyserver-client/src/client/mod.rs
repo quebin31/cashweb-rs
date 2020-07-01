@@ -2,6 +2,7 @@
 
 pub mod services;
 
+use bytes::Bytes;
 use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient};
 use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
@@ -26,15 +27,32 @@ impl<E> From<E> for KeyserverError<E> {
     }
 }
 
-/// The [`AddressMetadata`] paired with its [`PublicKey`].
+/// The [`AddressMetadata`] paired with its [`PublicKey`], the raw [`AuthWrapper`] and a [`POP token`].
+///
+/// [`POP token`]: https://github.com/cashweb/specifications/blob/master/proof-of-payment-token/specification.mediawiki
 #[derive(Clone, Debug)]
 pub struct MetadataPackage {
-    /// POP token attached to the response.
+    /// [`POP token`] attached to the response.
+    ///
+    /// [`POP token`]: https://github.com/cashweb/specifications/blob/master/proof-of-payment-token/specification.mediawiki
     pub token: String,
     /// Public key of the metadata.
     pub public_key: PublicKey,
     /// The address metadata.
     pub metadata: AddressMetadata,
+    /// The raw [`AuthWrapper`]
+    pub raw_auth_wrapper: Bytes,
+}
+
+/// The raw [`AuthWrapper`] paired with a [`POP token`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RawAuthWrapperPackage {
+    /// [`POP token`] attached to the response.
+    ///
+    /// [`POP token`]: https://github.com/cashweb/specifications/blob/master/proof-of-payment-token/specification.mediawiki
+    pub token: String,
+    /// The raw [`AuthWrapper`].
+    pub raw_auth_wrapper: Bytes,
 }
 
 /// `KeyserverClient` allows queries to specific keyservers.

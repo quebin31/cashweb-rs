@@ -8,8 +8,10 @@ use futures_core::{
 };
 use futures_util::future::{join, join_all};
 use hyper::{
-    body::aggregate, http::header::AUTHORIZATION, http::Method, Body, Error as HyperError, Request,
-    Response, StatusCode,
+    body::{aggregate, to_bytes},
+    http::header::AUTHORIZATION,
+    http::Method,
+    Body, Error as HyperError, Request, Response, StatusCode,
 };
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
@@ -18,7 +20,7 @@ pub use hyper::{
 use prost::{DecodeError, Message as _};
 use tower_service::Service;
 
-use super::{KeyserverClient, MetadataPackage};
+use super::{KeyserverClient, MetadataPackage, RawAuthWrapperPackage};
 use crate::models::*;
 
 type FutResponse<Response, Error> =
@@ -86,6 +88,85 @@ where
     }
 }
 
+/// Represents a request for the raw [`AuthWrapper`].
+///
+/// This will not error on invalid bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GetRawAuthWrapper;
+
+/// Error associated with getting raw [`AuthWrapper`] from a keyserver.
+#[derive(Debug)]
+pub enum GetRawAuthWrapperError<E> {
+    /// Error while processing the body.
+    Body(HyperError),
+    /// A connection error occured.
+    Service(E),
+    /// Unexpected status code.
+    UnexpectedStatusCode(u16),
+    /// POP token missing from headers.
+    MissingToken,
+}
+
+impl<S> Service<(Uri, GetRawAuthWrapper)> for KeyserverClient<S>
+where
+    S: Service<Request<Body>, Response = Response<Body>>,
+    S: Send + Clone + 'static,
+    <S as Service<Request<Body>>>::Future: Send,
+{
+    type Response = RawAuthWrapperPackage;
+    type Error = GetRawAuthWrapperError<S::Error>;
+    type Future = FutResponse<Self::Response, Self::Error>;
+
+    fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner_client
+            .poll_ready(context)
+            .map_err(GetRawAuthWrapperError::Service)
+    }
+
+    fn call(&mut self, (uri, _): (Uri, GetRawAuthWrapper)) -> Self::Future {
+        let mut client = self.inner_client.clone();
+        let http_request = Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap(); // This is safe
+        let fut = async move {
+            // Get response
+            let response = client
+                .call(http_request)
+                .await
+                .map_err(Self::Error::Service)?;
+
+            // Check status code
+            // TODO: Fix this
+            match response.status() {
+                StatusCode::OK => (),
+                code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
+            }
+
+            let token = response
+                .headers()
+                .into_iter()
+                .find(|(name, value)| {
+                    *name == AUTHORIZATION && value.as_bytes()[..4] == b"POP "[..]
+                })
+                .ok_or(Self::Error::MissingToken)?
+                .0
+                .to_string();
+
+            // Aggregate body
+            let body = response.into_body();
+            let raw_auth_wrapper = to_bytes(body).await.map_err(Self::Error::Body)?;
+
+            Ok(RawAuthWrapperPackage {
+                token,
+                raw_auth_wrapper,
+            })
+        };
+        Box::pin(fut)
+    }
+}
+
 /// Represents a request for the [`AddressMetadata`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMetadata;
@@ -107,8 +188,6 @@ pub enum GetMetadataError<E> {
     Service(E),
     /// Unexpected status code.
     UnexpectedStatusCode(u16),
-    /// Peering is disabled on the keyserver.
-    PeeringDisabled,
     /// POP token missing from headers.
     MissingToken,
 }
@@ -147,7 +226,6 @@ where
             // TODO: Fix this
             match response.status() {
                 StatusCode::OK => (),
-                StatusCode::NOT_IMPLEMENTED => return Err(Self::Error::PeeringDisabled),
                 code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
             }
 
@@ -163,8 +241,9 @@ where
 
             // Deserialize and decode body
             let body = response.into_body();
-            let buf = aggregate(body).await.map_err(Self::Error::Body)?;
-            let auth_wrapper = AuthWrapper::decode(buf).map_err(Self::Error::AuthWrapperDecode)?;
+            let raw_auth_wrapper = to_bytes(body).await.map_err(Self::Error::Body)?;
+            let auth_wrapper = AuthWrapper::decode(raw_auth_wrapper.clone())
+                .map_err(Self::Error::AuthWrapperDecode)?;
 
             // Parse auth wrapper
             let parsed_auth_wrapper = auth_wrapper
@@ -184,6 +263,7 @@ where
                 token,
                 public_key: parsed_auth_wrapper.public_key,
                 metadata,
+                raw_auth_wrapper,
             })
         };
         Box::pin(fut)
