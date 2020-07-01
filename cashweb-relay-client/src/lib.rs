@@ -10,7 +10,6 @@
 
 pub mod services;
 
-use async_trait::async_trait;
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
     Uri,
@@ -71,50 +70,18 @@ pub struct ProfilePackage {
     pub profile: Profile,
 }
 
-/// An interface for getting a [`Profile`] from a keyserver.
-#[async_trait]
-pub trait GetProfileInterface {
-    /// Error associated with getting a [`Profile`].
-    type Error;
-
-    /// Get [`Profile`] from a server. The result is wrapped in [`ProfilePackage`].
-    async fn get_profile(
-        &self,
-        keyserver_url: &str,
-        address: &str,
-    ) -> Result<ProfilePackage, Self::Error>;
-}
-
-/// An interface for putting a [`Profile`] from a relay server.
-#[async_trait]
-pub trait PutProfileInterface {
-    /// Error associated with putting a [`Profile`].
-    type Error;
-
-    /// Put a [`Profile`] to a relay server.
-    async fn put_profile(
-        &self,
-        keyserver_url: &str,
-        address: &str,
-        profile: Profile,
-        token: String,
-    ) -> Result<(), Self::Error>;
-}
-
-#[async_trait]
-impl<S> GetProfileInterface for S
+impl<S> RelayClient<S>
 where
-    S: Service<(Uri, GetProfile), Response = ProfilePackage>,
-    S: Sync + Clone + Send + 'static,
-    S::Future: Send + Sync + 'static,
+    Self: Service<(Uri, GetProfile), Response = ProfilePackage>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, GetProfile)>>::Future: Send + Sync + 'static,
 {
-    type Error = RelayError<S::Error>;
-
-    async fn get_profile(
+    /// Get [`Profile`] from a server. The result is wrapped in [`ProfilePackage`].
+    pub async fn get_profile(
         &self,
         keyserver_url: &str,
         address: &str,
-    ) -> Result<ProfilePackage, Self::Error> {
+    ) -> Result<ProfilePackage, RelayError<<Self as Service<(Uri, GetProfile)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/profiles/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(RelayError::Uri)?;
@@ -129,23 +96,20 @@ where
     }
 }
 
-#[async_trait]
-impl<S> PutProfileInterface for S
+impl<S> RelayClient<S>
 where
-    S: Service<(Uri, PutProfile), Response = ()>,
-    S: Sync + Clone + Send + 'static,
-    S::Future: Send + Sync + 'static,
+    Self: Service<(Uri, PutProfile), Response = ()>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, PutProfile)>>::Future: Send + Sync + 'static,
 {
-    type Error = RelayError<S::Error>;
-
-    /// Put metadata to a keyserver.
-    async fn put_profile(
+    /// Put a [`Profile`] to a relay server.
+    pub async fn put_profile(
         &self,
         relay_url: &str,
         address: &str,
         profile: Profile,
         token: String,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), RelayError<<Self as Service<(Uri, PutProfile)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/profiles/{}", relay_url, address);
         let uri: Uri = full_path.parse().map_err(RelayError::Uri)?;

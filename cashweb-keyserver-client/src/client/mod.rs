@@ -2,7 +2,6 @@
 
 pub mod services;
 
-use async_trait::async_trait;
 use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient};
 use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
@@ -74,56 +73,17 @@ impl KeyserverClient<HyperClient<HttpsConnector<HttpConnector>>> {
     }
 }
 
-/// An interface for getting [`Peers`] from a keyserver.
-#[async_trait]
-pub trait GetPeersInterface {
-    /// Error associated with getting [`Peers`].
-    type Error;
-
-    /// Get [`Peers`] from a keyserver.
-    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, Self::Error>;
-}
-
-/// An interface for getting [`AddressMetadata`] from a keyserver.
-#[async_trait]
-pub trait GetMetadataInterface {
-    /// Error associated with getting [`AddressMetadata`].
-    type Error;
-
-    /// Get [`AddressMetadata`] from a server. The result is wrapped in [`MetadataPackage`].
-    async fn get_metadata(
-        &self,
-        keyserver_url: &str,
-        address: &str,
-    ) -> Result<MetadataPackage, Self::Error>;
-}
-
-/// An interface for putting [`AddressMetadata`] to a keyserver.
-#[async_trait]
-pub trait PutMetadataInterface {
-    /// Error associated with putting [`AddressMetadata`].
-    type Error;
-
-    /// Put [`AddressMetadata`] to a keyserver.
-    async fn put_metadata(
-        &self,
-        keyserver_url: &str,
-        address: &str,
-        metadata: AddressMetadata,
-        token: String,
-    ) -> Result<(), Self::Error>;
-}
-
-#[async_trait]
-impl<S> GetPeersInterface for S
+impl<S> KeyserverClient<S>
 where
-    S: Service<(Uri, GetPeers), Response = Peers>,
-    S: Sync + Clone + Send + 'static,
-    S::Future: Send + Sync + 'static,
+    Self: Service<(Uri, GetPeers), Response = Peers>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, GetPeers)>>::Future: Send + Sync + 'static,
 {
-    type Error = KeyserverError<S::Error>;
-
-    async fn get_peers(&self, keyserver_url: &str) -> Result<Peers, Self::Error> {
+    /// Get [`Peers`] from a keyserver.
+    pub async fn get_peers(
+        &self,
+        keyserver_url: &str,
+    ) -> Result<Peers, KeyserverError<<Self as Service<(Uri, GetPeers)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/peers", keyserver_url);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
@@ -138,17 +98,14 @@ where
     }
 }
 
-#[async_trait]
-impl<S> GetMetadataInterface for S
+impl<S> KeyserverClient<S>
 where
-    S: Service<(Uri, GetMetadata), Response = MetadataPackage>,
-    S: Sync + Clone + Send + 'static,
-    S::Future: Send + Sync + 'static,
+    Self: Service<(Uri, GetMetadata), Response = MetadataPackage>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, GetMetadata)>>::Future: Send + Sync + 'static,
 {
-    type Error = KeyserverError<S::Error>;
-
-    /// Get metadata from a keyserver.
-    async fn get_metadata(
+    /// Get [`AddressMetadata`] from a server. The result is wrapped in [`MetadataPackage`].
+    pub async fn get_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
@@ -167,23 +124,20 @@ where
     }
 }
 
-#[async_trait]
-impl<S> PutMetadataInterface for S
+impl<S> KeyserverClient<S>
 where
-    S: Service<(Uri, PutMetadata), Response = ()>,
-    S: Sync + Clone + Send + 'static,
-    S::Future: Send + Sync + 'static,
+    Self: Service<(Uri, PutMetadata), Response = ()>,
+    Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, PutMetadata)>>::Future: Send + Sync + 'static,
 {
-    type Error = KeyserverError<S::Error>;
-
-    /// Put metadata to a keyserver.
-    async fn put_metadata(
+    /// Put [`AddressMetadata`] to a keyserver.
+    pub async fn put_metadata(
         &self,
         keyserver_url: &str,
         address: &str,
         metadata: AddressMetadata,
         token: String,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutMetadata)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
