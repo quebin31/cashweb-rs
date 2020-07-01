@@ -272,7 +272,7 @@ where
 
 /// Request for putting [`AuthWrapper`] to the keyserver.
 #[derive(Debug, Clone, PartialEq)]
-pub struct PutAuthWrapper {
+pub struct PutMetadata {
     /// POP authorization token.
     pub token: String,
     /// The [`AuthWrapper`] to be put to the keyserver.
@@ -281,30 +281,30 @@ pub struct PutAuthWrapper {
 
 /// Error associated with putting [`AddressMetadata`] to the keyserver.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PutAuthWrapperError<E> {
+pub enum PutMetadataError<E> {
     /// A connection error occured.
     Service(E),
     /// Unexpected status code.
     UnexpectedStatusCode(u16),
 }
 
-impl<S> Service<(Uri, PutAuthWrapper)> for KeyserverClient<S>
+impl<S> Service<(Uri, PutMetadata)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
     <S as Service<Request<Body>>>::Future: Send,
 {
     type Response = ();
-    type Error = PutAuthWrapperError<S::Error>;
+    type Error = PutMetadataError<S::Error>;
     type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
             .poll_ready(context)
-            .map_err(PutAuthWrapperError::Service)
+            .map_err(PutMetadataError::Service)
     }
 
-    fn call(&mut self, (uri, request): (Uri, PutAuthWrapper)) -> Self::Future {
+    fn call(&mut self, (uri, request): (Uri, PutMetadata)) -> Self::Future {
         let mut client = self.inner_client.clone();
 
         // Construct body
@@ -354,13 +354,13 @@ where
     <S as Service<Request<Body>>>::Future: Send,
 {
     type Response = ();
-    type Error = PutAuthWrapperError<S::Error>;
+    type Error = PutMetadataError<S::Error>;
     type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
             .poll_ready(context)
-            .map_err(PutAuthWrapperError::Service)
+            .map_err(PutMetadataError::Service)
     }
 
     fn call(&mut self, (uri, request): (Uri, PutRawAuthWrapper)) -> Self::Future {

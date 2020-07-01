@@ -144,9 +144,9 @@ where
 
 impl<S> KeyserverClient<S>
 where
-    Self: Service<(Uri, PutAuthWrapper), Response = ()>,
+    Self: Service<(Uri, PutMetadata), Response = ()>,
     Self: Sync + Clone + Send + 'static,
-    <Self as Service<(Uri, PutAuthWrapper)>>::Future: Send + Sync + 'static,
+    <Self as Service<(Uri, PutMetadata)>>::Future: Send + Sync + 'static,
 {
     /// Put [`AuthWrapper`] to a keyserver.
     pub async fn put_metadata(
@@ -155,7 +155,7 @@ where
         address: &str,
         auth_wrapper: AuthWrapper,
         token: String,
-    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutAuthWrapper)>>::Error>> {
+    ) -> Result<(), KeyserverError<<Self as Service<(Uri, PutMetadata)>>::Error>> {
         // Construct URI
         let full_path = format!("{}/keys/{}", keyserver_url, address);
         let uri: Uri = full_path.parse().map_err(KeyserverError::Uri)?;
@@ -163,7 +163,7 @@ where
         // Construct request
         let request = (
             uri,
-            PutAuthWrapper {
+            PutMetadata {
                 token,
                 auth_wrapper,
             },

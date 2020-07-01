@@ -268,8 +268,8 @@ where
         token: String,
         sample_size: usize,
     ) -> Result<
-        AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutAuthWrapper)>>::Error>,
-        SampleError<<KeyserverClient<S> as Service<(Uri, PutAuthWrapper)>>::Error>,
+        AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
+        SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
     > {
         let read_uris = self.uris.read().await;
         let uris = uniform_random_sampler(&read_uris, sample_size);
@@ -277,6 +277,29 @@ where
         // Construct body
         let mut raw_auth_wrapper = Vec::with_capacity(auth_wrapper.encoded_len());
         auth_wrapper.encode(&mut raw_auth_wrapper).unwrap();
+
+        let request = PutRawAuthWrapper {
+            token,
+            raw_auth_wrapper,
+        };
+        let sample_request = SampleRequest { uris, request };
+        let responses = self.inner_client.clone().call(sample_request).await?;
+
+        Ok(AggregateResponse::aggregate(responses, |_| ()))
+    }
+
+    /// Perform a uniform broadcast of raw metadata over keyservers and select the latest.
+    pub async fn uniform_broadcast_raw_metadata(
+        &self,
+        raw_auth_wrapper: Vec<u8>,
+        token: String,
+        sample_size: usize,
+    ) -> Result<
+        AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
+        SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
+    > {
+        let read_uris = self.uris.read().await;
+        let uris = uniform_random_sampler(&read_uris, sample_size);
 
         let request = PutRawAuthWrapper {
             token,
