@@ -5,9 +5,9 @@ use hyper::{
     Uri,
 };
 use rand::seq::SliceRandom;
+use tokio::sync::RwLock;
 use tower_service::Service;
 use tower_util::ServiceExt;
-use tokio::sync::RwLock;
 
 use crate::{
     client::{services::*, KeyserverClient, MetadataPackage},
@@ -50,7 +50,7 @@ impl KeyserverManager<HyperClient<HttpConnector>> {
             inner_client: KeyserverClient::new(),
             uris: Arc::new(RwLock::new(uris)),
         })
-    }    
+    }
 }
 
 /// Choose from a random subset of URIs.
