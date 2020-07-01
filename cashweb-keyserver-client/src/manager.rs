@@ -7,6 +7,7 @@ use hyper::{
 use rand::seq::SliceRandom;
 use tower_service::Service;
 use tower_util::ServiceExt;
+use tokio::sync::RwLock;
 
 use crate::{
     client::{services::*, KeyserverClient, MetadataPackage},
@@ -17,16 +18,21 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct KeyserverManager<S> {
     inner_client: KeyserverClient<S>,
-    uris: Arc<Vec<Uri>>,
+    uris: Arc<RwLock<Vec<Uri>>>,
 }
 
 impl<S> KeyserverManager<S> {
     /// Creates a new manager from URIs and a client.
-    pub fn from_service(service: S, uris: Arc<Vec<Uri>>) -> Self {
+    pub fn from_service(service: S, uris: Arc<RwLock<Vec<Uri>>>) -> Self {
         Self {
             inner_client: KeyserverClient::from_service(service),
             uris,
         }
+    }
+
+    /// Get shared reference the [`Uri`]s.
+    pub fn get_uris(&self) -> Arc<RwLock<Vec<Uri>>> {
+        self.uris.clone()
     }
 
     /// Converts the manager into the underlying client.
@@ -42,9 +48,9 @@ impl KeyserverManager<HyperClient<HttpConnector>> {
         let uris = uris?;
         Ok(Self {
             inner_client: KeyserverClient::new(),
-            uris: Arc::new(uris),
+            uris: Arc::new(RwLock::new(uris)),
         })
-    }
+    }    
 }
 
 /// Choose from a random subset of URIs.
@@ -168,7 +174,8 @@ where
         SampleResponse<MetadataPackage, <KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
     > {
-        let uris = uniform_random_sampler(&self.uris, sample_size);
+        let uris = self.uris.read().await;
+        let uris = uniform_random_sampler(&uris, sample_size);
         let sample_request = SampleRequest {
             request: GetMetadata,
             uris,
@@ -187,10 +194,12 @@ where
         AggregateResponse<Peers, <KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
     > {
+        let uris_read = self.uris.read().await;
         let sample_request = SampleRequest {
-            uris: self.uris.as_ref().clone(),
+            uris: uris_read.clone(),
             request: GetPeers,
         };
+        drop(uris_read);
         let responses = self.inner_client.clone().oneshot(sample_request).await?;
 
         let aggregate_response = AggregateResponse::aggregate(responses, aggregate_peers);
@@ -205,8 +214,10 @@ where
         AggregateResponse<Peers, <KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
     > {
-        let mut found_uris: HashSet<_> = self.uris.iter().cloned().collect();
-        let mut total: HashSet<_> = self.uris.iter().cloned().collect();
+        let read_uris = self.uris.read().await;
+        let mut found_uris: HashSet<_> = read_uris.iter().cloned().collect();
+        let mut total: HashSet<_> = read_uris.iter().cloned().collect();
+
         let mut total_errors = Vec::new();
         while !found_uris.is_empty() {
             // Get sample
@@ -259,7 +270,9 @@ where
         AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
     > {
-        let uris = uniform_random_sampler(&self.uris, sample_size);
+        let read_uris = self.uris.read().await;
+        let uris = uniform_random_sampler(&read_uris, sample_size);
+
         let request = PutMetadata { token, metadata };
         let sample_request = SampleRequest { uris, request };
         let responses = self.inner_client.clone().call(sample_request).await?;
