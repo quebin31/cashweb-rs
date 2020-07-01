@@ -15,8 +15,9 @@ auth-wrapper = { version = "0.1.0-alpha.0", package = "cashweb-auth-wrapper", pa
 bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
 bitcoin-client = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
 keyserver-client = { version = "0.1.0-alpha.0", package = "cashweb-keyserver-client", path = "../cashweb-keyserver-client" }
+keyserver = { version = "0.1.0-alpha.0", package = "cashweb-keyserver", path = "../cashweb-keyserver" }
 payments = { version = "0.1.0-alpha.0", package = "cashweb-payments", path = "../cashweb-payments" }
 relay = { version = "0.1.0-alpha.0", package = "cashweb-relay", path = "../cashweb-relay" }
 relay-client = { version = "0.1.0-alpha.0", package = "cashweb-relay-client", path = "../cashweb-relay-client" }
-token = { version = "0.1.0-alpha.2", package = "cashweb-token", path = "../cashweb-token" }
 secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
+token = { version = "0.1.0-alpha.2", package = "cashweb-token", path = "../cashweb-token" }

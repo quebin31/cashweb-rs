@@ -4,6 +4,7 @@ members = [
     "cashweb-auth-wrapper",
     "cashweb-bitcoin",
     "cashweb-bitcoin-client",
+    "cashweb-keyserver",
     "cashweb-keyserver-client",
     "cashweb-payments",
     "cashweb-relay",
