@@ -24,11 +24,11 @@ use crate::models::*;
 type FutResponse<Response, Error> =
     Pin<Box<dyn Future<Output = Result<Response, Error>> + 'static + Send>>;
 
-/// Represents a request for the Peers object.
+/// Represents a request for the [`Peers`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetPeers;
 
-/// Error associated with getting Peers from a keyserver.
+/// Error associated with getting [`Peers`] from a keyserver.
 #[derive(Debug)]
 pub enum GetPeersError<E> {
     /// Error while processing the body.
@@ -86,11 +86,11 @@ where
     }
 }
 
-/// Represents a request for the Metadata object.
+/// Represents a request for the [`AddressMetadata`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMetadata;
 
-/// Error associated with getting Metadata from a keyserver.
+/// Error associated with getting [`AddressMetadata`] from a keyserver.
 #[derive(Debug)]
 pub enum GetMetadataError<E> {
     /// Error while decoding the [`AddressMetadata`]

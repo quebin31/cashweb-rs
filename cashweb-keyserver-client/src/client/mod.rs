@@ -27,7 +27,7 @@ impl<E> From<E> for KeyserverError<E> {
     }
 }
 
-/// The [`AddressMetadata`] paired with its PublicKey.
+/// The [`AddressMetadata`] paired with its [`PublicKey`].
 #[derive(Clone, Debug)]
 pub struct MetadataPackage {
     /// POP token attached to the response.
