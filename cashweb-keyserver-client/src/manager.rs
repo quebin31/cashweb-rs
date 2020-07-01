@@ -23,10 +23,10 @@ pub struct KeyserverManager<S> {
 
 impl<S> KeyserverManager<S> {
     /// Creates a new manager from URIs and a client.
-    pub fn from_service(service: S, uris: Arc<RwLock<Vec<Uri>>>) -> Self {
+    pub fn from_service(service: S, uris: Vec<Uri>) -> Self {
         Self {
             inner_client: KeyserverClient::from_service(service),
-            uris,
+            uris: Arc::new(RwLock::new(uris)),
         }
     }
 
@@ -263,9 +263,9 @@ where
     /// Perform a uniform broadcast of metadata over keyservers and select the latest.
     pub async fn uniform_broadcast_metadata(
         &self,
-        sample_size: usize,
-        token: String,
         metadata: AddressMetadata,
+        token: String,
+        sample_size: usize,
     ) -> Result<
         AggregateResponse<(), <KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
