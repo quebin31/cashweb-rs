@@ -1,3 +1,5 @@
+//! This module contains lower-level primitives for working with the [`RelayClient`].
+
 use std::pin::Pin;
 
 use futures_core::{
@@ -30,7 +32,7 @@ pub struct GetProfile;
 /// Error associated with getting a Profile from a relay server.
 #[derive(Debug)]
 pub enum GetProfileError<E> {
-    // Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
+    /// Error while decoding the [AddressMetadata](struct.AddressMetadata.html)
     MetadataDecode(DecodeError),
     /// Error while decoding the [AuthWrapper](struct.AuthWrapper.html).
     AuthWrapperDecode(DecodeError),
@@ -91,7 +93,7 @@ where
     }
 }
 
-/// Error associated with putting a Profile to the relay server.
+/// Error associated with putting [`Profile`] to the relay server.
 #[derive(Clone, Debug)]
 pub enum PutProfileError<E> {
     /// A connection error occured.
@@ -100,9 +102,12 @@ pub enum PutProfileError<E> {
     UnexpectedStatusCode(u16),
 }
 
+/// Request for putting [`Profile`] to the keyserver.
 #[derive(Clone, Debug)]
 pub struct PutProfile {
+    /// POP token attached to the request.
     pub token: String,
+    /// The [`Profile`] to be put.
     pub profile: Profile,
 }
 
@@ -157,7 +162,7 @@ where
     }
 }
 
-/// Error associated with putting a Profile to the relay server.
+/// Error associated with putting a [`Message`] to the relay server.
 #[derive(Debug)]
 pub enum GetMessageError<E> {
     /// A connection error occured.
@@ -170,8 +175,10 @@ pub enum GetMessageError<E> {
     MessagePageDecode(DecodeError),
 }
 
+/// Represents a request for the [`Message`]s.
 #[derive(Clone, Debug)]
 pub struct GetMessages {
+    /// POP token attached to the request.
     pub token: String,
 }
 
