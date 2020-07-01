@@ -12,8 +12,8 @@ use std::fmt;
 
 use hex::FromHexError;
 use hyper::{
-    client::HttpConnector, Body, Client as HyperClient, Request as HttpRequest,
-    Response as HttpResponse,
+    client::HttpConnector, Body, Client as HyperClient, Error as HyperError,
+    Request as HttpRequest, Response as HttpResponse,
 };
 use hyper_tls::HttpsConnector;
 use json_rpc::{
@@ -26,11 +26,14 @@ use json_rpc::{
 use serde_json::Value;
 use tower_service::Service;
 
-/// Standard HTTP client
+/// Standard HTTP client.
 pub type HttpClient = HyperClient<HttpConnector>;
 
-/// Standard HTTPs client
+/// Standard HTTPs client.
 pub type HttpsClient = HyperClient<HttpsConnector<HttpConnector>>;
+
+/// Standard HTTP error.
+pub type HttpError = NodeError<HyperError>;
 
 /// Basic Bitcoin JSON-RPC client.
 #[derive(Clone, Debug)]

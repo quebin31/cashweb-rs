@@ -5,4 +5,5 @@ pub use keyserver_client;
 pub use payments;
 pub use relay;
 pub use relay_client;
+pub use secp256k1;
 pub use token;

@@ -5,14 +5,14 @@ authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
-
 aes = "0.4.0"
 block-modes = "0.4.0"
-secp256k1 = { git = "https://github.com/rust-bitcoin/rust-secp256k1", rev = "a5147bbf015ca61bb0e4e09adb8e9b324965c291" }
 ring = "0.16.15"
 ripemd160 = "0.9.1"
 prost = "0.6.1"
+
+bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
+secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
 
 [build-dependencies]
 prost-build = "0.6.1"
