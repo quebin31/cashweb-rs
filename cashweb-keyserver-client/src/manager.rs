@@ -1,8 +1,9 @@
-use std::{collections::HashSet, fmt, sync::Arc};
+use std::{collections::HashSet, fmt, str::FromStr, sync::Arc};
 
 use hyper::{
-    client::HttpConnector, http::uri::InvalidUri, Body, Client as HyperClient, Request, Response,
-    Uri,
+    client::HttpConnector,
+    http::uri::{InvalidUri, PathAndQuery},
+    Body, Client as HyperClient, Request, Response, Uri,
 };
 use prost::Message as _;
 use rand::seq::SliceRandom;
@@ -52,6 +53,39 @@ impl KeyserverManager<HyperClient<HttpConnector>> {
             uris: Arc::new(RwLock::new(uris)),
         })
     }
+}
+
+/// Takes a URI and appends a path to it.
+///
+/// This panics if `new_path` is invalid.
+fn append_path(uri: Uri, new_path: &str) -> Uri {
+    let mut parts = uri.into_parts();
+    let path_and_query_opt = &mut parts.path_and_query;
+    let new_path_query_str = if let Some(path_and_query) = path_and_query_opt {
+        let path = path_and_query.path();
+        if path.chars().last().unwrap() == '/' {
+            let mut trimmed = path.to_string();
+            trimmed.pop();
+            format!(
+                "{}{}{}",
+                trimmed,
+                new_path,
+                path_and_query.query().unwrap_or_default()
+            )
+        } else {
+            format!(
+                "{}{}{}",
+                path,
+                new_path,
+                path_and_query.query().unwrap_or_default()
+            )
+        }
+    } else {
+        new_path.to_string()
+    };
+    *path_and_query_opt = Some(PathAndQuery::from_str(&new_path_query_str).unwrap()); // TODO: Double check this is safe
+
+    Uri::from_parts(parts).unwrap()
 }
 
 /// Choose from a random subset of URIs.
@@ -170,12 +204,17 @@ where
     /// Perform a uniform sample of metadata over keyservers and select the latest.
     pub async fn uniform_sample_metadata(
         &self,
+        address: &str,
         sample_size: usize,
     ) -> Result<
         SampleResponse<MetadataPackage, <KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetMetadata)>>::Error>,
     > {
-        let uris = self.uris.read().await;
+        let uris = self.uris.read().await.clone();
+        let uris = uris
+            .into_iter()
+            .map(|uri| append_path(uri, &format!("/keys/{}", address)))
+            .collect::<Vec<Uri>>();
         let uris = uniform_random_sampler(&uris, sample_size);
         let sample_request = SampleRequest {
             request: GetMetadata,
@@ -195,12 +234,15 @@ where
         AggregateResponse<Peers, <KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
         SampleError<<KeyserverClient<S> as Service<(Uri, GetPeers)>>::Error>,
     > {
-        let uris_read = self.uris.read().await;
+        let uris = self.uris.read().await.clone();
+        let uris = uris
+            .into_iter()
+            .map(|uri| append_path(uri, "/peers"))
+            .collect::<Vec<Uri>>();
         let sample_request = SampleRequest {
-            uris: uris_read.clone(),
+            uris,
             request: GetPeers,
         };
-        drop(uris_read);
         let responses = self.inner_client.clone().oneshot(sample_request).await?;
 
         let aggregate_response = AggregateResponse::aggregate(responses, aggregate_peers);
@@ -222,7 +264,10 @@ where
         let mut total_errors = Vec::new();
         while !found_uris.is_empty() {
             // Get sample
-            let uris = found_uris.drain().collect();
+            let uris = found_uris
+                .drain()
+                .map(|uri| append_path(uri, "/peers"))
+                .collect();
             let sample_request = SampleRequest {
                 uris,
                 request: GetPeers,
@@ -264,6 +309,7 @@ where
     /// Perform a uniform broadcast of metadata over keyservers and select the latest.
     pub async fn uniform_broadcast_metadata(
         &self,
+        address: &str,
         auth_wrapper: AuthWrapper,
         token: String,
         sample_size: usize,
@@ -272,7 +318,10 @@ where
         SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
     > {
         let read_uris = self.uris.read().await;
-        let uris = uniform_random_sampler(&read_uris, sample_size);
+        let uris = uniform_random_sampler(&read_uris, sample_size)
+            .into_iter()
+            .map(|uri| append_path(uri, &format!("/keys/{}", address)))
+            .collect::<Vec<Uri>>();
 
         // Construct body
         let mut raw_auth_wrapper = Vec::with_capacity(auth_wrapper.encoded_len());
@@ -291,6 +340,7 @@ where
     /// Perform a uniform broadcast of raw metadata over keyservers and select the latest.
     pub async fn uniform_broadcast_raw_metadata(
         &self,
+        address: &str,
         raw_auth_wrapper: Vec<u8>,
         token: String,
         sample_size: usize,
@@ -299,8 +349,11 @@ where
         SampleError<<KeyserverClient<S> as Service<(Uri, PutMetadata)>>::Error>,
     > {
         let read_uris = self.uris.read().await;
-        let uris = uniform_random_sampler(&read_uris, sample_size);
-
+        let uris = uniform_random_sampler(&read_uris, sample_size)
+            .into_iter()
+            .map(|uri| append_path(uri, &format!("/keys/{}", address)))
+            .collect::<Vec<Uri>>();
+        
         let request = PutRawAuthWrapper {
             token,
             raw_auth_wrapper,
