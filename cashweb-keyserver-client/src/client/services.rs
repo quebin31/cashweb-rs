@@ -447,10 +447,10 @@ where
             let responses: Vec<(Uri, Result<_, _>)> = join_all(response_futs).await;
 
             // If no successes then return all errors
-            if responses.iter().any(|(_, res)| res.is_ok()) {
+            if responses.iter().all(|(_, res)| res.is_err()) {
                 let errors = responses
                     .into_iter()
-                    .map(|(uri, result)| (uri, result.err().unwrap()))
+                    .map(|(uri, result)| (uri, result.unwrap_err()))
                     .collect();
                 return Err(SampleError::Sample(errors));
             }
