@@ -96,14 +96,13 @@ pub fn uniform_random_sampler(uris: &[Uri], size: usize) -> Vec<Uri> {
 
 /// Select best [`AuthWrapper`] from a list.
 ///
-/// Panics if empty slice is given.
-///
 /// [`AuthWrapper`]: auth_wrapper::AuthWrapper
-pub fn select_auth_wrapper(metadatas: Vec<(Uri, MetadataPackage)>) -> (Uri, MetadataPackage) {
+pub fn select_auth_wrapper(
+    metadatas: Vec<(Uri, MetadataPackage)>,
+) -> Option<(Uri, MetadataPackage)> {
     metadatas
         .into_iter()
-        .max_by_key(move |(_, pair)| pair.metadata.timestamp)
-        .unwrap()
+        .max_by_key(move |(_, package)| package.metadata.timestamp)
 }
 
 /// Aggregate a collection of [`Peers`] into a single structure.
@@ -117,12 +116,10 @@ pub fn aggregate_peers(peers: Vec<(Uri, Peers)>) -> Peers {
 }
 
 /// Response to a sample query.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SampleResponse<R, E> {
-    /// The [`Uri`] of the selected keyserver.
-    pub uri: Uri,
-    /// The selected response from the sample.
-    pub response: R,
+    /// Paired [`Uri`] and response.
+    pub response: Option<(Uri, R)>,
     /// The errors paired with the [`Uri`] of the keyserver they originated at.
     pub errors: Vec<(Uri, E)>,
 }
@@ -133,7 +130,7 @@ where
     E: fmt::Debug,
 {
     /// Create a sample response from a list of results.
-    pub fn select<F: FnOnce(Vec<(Uri, R)>) -> (Uri, R)>(
+    pub fn select<F: FnOnce(Vec<(Uri, R)>) -> Option<(Uri, R)>>(
         responses: Vec<(Uri, Result<R, E>)>,
         selector: F,
     ) -> Self {
@@ -148,13 +145,9 @@ where
             .map(|(uri, res)| (uri, res.unwrap_err()))
             .collect();
 
-        let (uri, response) = selector(oks);
+        let response = selector(oks);
 
-        SampleResponse {
-            uri,
-            response,
-            errors,
-        }
+        SampleResponse { response, errors }
     }
 }
 
@@ -353,7 +346,7 @@ where
             .into_iter()
             .map(|uri| append_path(uri, &format!("/keys/{}", address)))
             .collect::<Vec<Uri>>();
-        
+
         let request = PutRawAuthWrapper {
             token,
             raw_auth_wrapper,
