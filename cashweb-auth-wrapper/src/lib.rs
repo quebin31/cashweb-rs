@@ -135,7 +135,7 @@ impl ParsedAuthWrapper {
     /// Verify the signature on [`ParsedAuthWrapper`].
     #[inline]
     pub fn verify(&self) -> Result<(), VerifyError> {
-        if self.scheme != SignatureScheme::Schnorr {
+        if self.scheme == SignatureScheme::Schnorr {
             // TODO: Support Schnorr
             return Err(VerifyError::UnsupportedScheme);
         }
