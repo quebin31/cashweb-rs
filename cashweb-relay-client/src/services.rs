@@ -44,6 +44,9 @@ pub enum GetProfileError<E> {
     UnexpectedStatusCode(u16),
 }
 
+type FutResponse<Response, Error> =
+    Pin<Box<dyn Future<Output = Result<Response, Error>> + 'static + Send>>;
+
 impl<S> Service<(Uri, GetProfile)> for RelayClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
@@ -52,8 +55,7 @@ where
 {
     type Response = AuthWrapper;
     type Error = GetProfileError<S::Error>;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
+    type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client
@@ -119,8 +121,7 @@ where
 {
     type Response = ();
     type Error = PutProfileError<S::Error>;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + 'static + Send>>;
+    type Future = FutResponse<Self::Response, Self::Error>;
 
     fn poll_ready(&mut self, context: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner_client

@@ -312,7 +312,7 @@ impl ParsedMessage {
 
     /// Create the shared key from the destination private key, a salt, and a list of HKDF info.
     #[inline]
-    pub fn create_shared_key<'a>(
+    pub fn create_shared_key(
         &self,
         private_key: &[u8],
         salt: &[u8],

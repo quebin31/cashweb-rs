@@ -95,7 +95,12 @@ impl ExtendedPublicKey {
     }
 
     /// Convert into the [`PublicKey`] and chain code.
-    pub fn into_parts(&self) -> (PublicKey, [u8; 32]) {
+    pub fn as_parts(&self) -> (PublicKey, [u8; 32]) {
+        (self.public_key, self.chain_code)
+    }
+
+    /// Convert into the [`PublicKey`] and chain code.
+    pub fn into_parts(self) -> (PublicKey, [u8; 32]) {
         (self.public_key, self.chain_code)
     }
 
@@ -138,7 +143,7 @@ impl ExtendedPublicKey {
 
         let private_key = PrivateKey::from_slice(&hmac_result.as_ref()[..32]).unwrap(); // This is safe
         let chain_code: [u8; 32] = hmac_result.as_ref()[32..].try_into().unwrap(); // This is safe
-        let mut public_key = self.public_key.clone();
+        let mut public_key = self.public_key;
         public_key
             .add_exp_assign(secp, &private_key[..])
             .map_err(DeriveError::InvalidTweak)?;
@@ -198,7 +203,7 @@ impl ExtendedPrivateKey {
         let mut private_key = if let Some(num) = path_iter.next() {
             self.derive_private_child(secp, *num)
         } else {
-            return self.clone();
+            return *self;
         };
         for num in path {
             private_key = private_key.derive_private_child(secp, *num);

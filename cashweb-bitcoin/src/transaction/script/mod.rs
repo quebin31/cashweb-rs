@@ -24,6 +24,12 @@ impl From<Vec<u8>> for Script {
 }
 
 impl Script {
+    /// Check whether the script is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Length of the script.
     #[inline]
     pub fn len(&self) -> usize {
