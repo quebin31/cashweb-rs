@@ -144,6 +144,7 @@ where
                 code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
             }
 
+            #[allow(clippy::borrow_interior_mutable_const)]
             let token = response
                 .headers()
                 .into_iter()
@@ -229,6 +230,7 @@ where
                 code => return Err(Self::Error::UnexpectedStatusCode(code.as_u16())),
             }
 
+            #[allow(clippy::borrow_interior_mutable_const)]
             let token = response
                 .headers()
                 .into_iter()
@@ -423,6 +425,7 @@ where
     <Self as Service<(Uri, T)>>::Error: fmt::Debug + Send,
     <Self as Service<(Uri, T)>>::Future: Send,
 {
+    #[allow(clippy::type_complexity)]
     type Response = Vec<(
         Uri,
         Result<<Self as Service<(Uri, T)>>::Response, <Self as Service<(Uri, T)>>::Error>,

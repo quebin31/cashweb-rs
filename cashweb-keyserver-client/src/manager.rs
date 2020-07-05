@@ -63,7 +63,7 @@ fn append_path(uri: Uri, new_path: &str) -> Uri {
     let path_and_query_opt = &mut parts.path_and_query;
     let new_path_query_str = if let Some(path_and_query) = path_and_query_opt {
         let path = path_and_query.path();
-        if path.chars().last().unwrap() == '/' {
+        if path.ends_with('/') {
             let mut trimmed = path.to_string();
             trimmed.pop();
             format!(
@@ -244,6 +244,7 @@ where
     }
 
     /// Crawl peers.
+    #[allow(clippy::mutable_key_type)]
     pub async fn crawl_peers(
         &self,
     ) -> Result<
@@ -252,6 +253,7 @@ where
     > {
         let read_uris = self.uris.read().await;
         let mut found_uris: HashSet<_> = read_uris.iter().cloned().collect();
+
         let mut total: HashSet<_> = read_uris.iter().cloned().collect();
 
         let mut total_errors = Vec::new();

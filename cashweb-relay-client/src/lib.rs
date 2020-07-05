@@ -37,12 +37,18 @@ impl<S> RelayClient<S> {
     }
 }
 
-impl RelayClient<HyperClient<HttpConnector>> {
-    /// Create a new HTTP client.
-    pub fn new() -> Self {
+impl Default for RelayClient<HyperClient<HttpConnector>> {
+    fn default() -> Self {
         Self {
             inner_client: HyperClient::new(),
         }
+    }
+}
+
+impl RelayClient<HyperClient<HttpConnector>> {
+    /// Create a new HTTP client.
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

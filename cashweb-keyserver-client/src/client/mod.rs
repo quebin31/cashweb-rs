@@ -72,12 +72,18 @@ impl<S> KeyserverClient<S> {
     }
 }
 
-impl KeyserverClient<HyperClient<HttpConnector>> {
-    /// Create a new HTTP client.
-    pub fn new() -> Self {
+impl Default for KeyserverClient<HyperClient<HttpConnector>> {
+    fn default() -> Self {
         Self {
             inner_client: HyperClient::new(),
         }
+    }
+}
+
+impl KeyserverClient<HyperClient<HttpConnector>> {
+    /// Create a new HTTP client.
+    pub fn new() -> Self {
+        Default::default()
     }
 }
 

@@ -85,7 +85,7 @@ impl AuthWrapper {
         let payload_digest = match self.payload_digest.len() {
             0 => {
                 if self.payload.is_empty() {
-                    return Err(ParseError::DigestAndPayloadMissing.into());
+                    return Err(ParseError::DigestAndPayloadMissing);
                 } else {
                     let payload_digest = digest(&SHA256, &self.payload);
                     let digest_arr: [u8; 32] = payload_digest.as_ref().try_into().unwrap();
@@ -95,12 +95,12 @@ impl AuthWrapper {
             32 => {
                 let payload_digest = digest(&SHA256, &self.payload);
                 if *payload_digest.as_ref() != self.payload_digest[..] {
-                    return Err(ParseError::FraudulentDigest.into());
+                    return Err(ParseError::FraudulentDigest);
                 }
                 let digest_arr: [u8; 32] = self.payload_digest[..].try_into().unwrap();
                 digest_arr
             }
-            _ => return Err(ParseError::UnexpectedLengthDigest.into()),
+            _ => return Err(ParseError::UnexpectedLengthDigest),
         };
 
         Ok(ParsedAuthWrapper {
