@@ -215,7 +215,7 @@ impl Encodable for Transaction {
 
     #[inline]
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
-        buf.put_u32(self.version);
+        buf.put_u32_le(self.version);
         self.input_count_varint().encode_raw(buf);
         for input in &self.inputs {
             input.encode_raw(buf);
@@ -224,7 +224,7 @@ impl Encodable for Transaction {
         for output in &self.outputs {
             output.encode_raw(buf);
         }
-        buf.put_u32(self.lock_time);
+        buf.put_u32_le(self.lock_time);
     }
 }
 
@@ -266,7 +266,7 @@ impl Decodable for Transaction {
         if buf.remaining() < 4 {
             return Err(Self::Error::VersionTooShort);
         }
-        let version = buf.get_u32();
+        let version = buf.get_u32_le();
 
         // Parse inputs
         let n_inputs: u64 = VarInt::decode(&mut buf)
@@ -290,7 +290,7 @@ impl Decodable for Transaction {
         if buf.remaining() < 4 {
             return Err(Self::Error::LockTimeTooShort);
         }
-        let lock_time = buf.get_u32();
+        let lock_time = buf.get_u32_le();
         Ok(Transaction {
             version,
             lock_time,

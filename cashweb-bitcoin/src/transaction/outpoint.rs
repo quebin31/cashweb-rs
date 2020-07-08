@@ -24,7 +24,7 @@ impl Encodable for Outpoint {
     #[inline]
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
         buf.put(&self.tx_id[..]);
-        buf.put_u32(self.vout);
+        buf.put_u32_le(self.vout);
     }
 }
 
@@ -48,7 +48,7 @@ impl Decodable for Outpoint {
         }
         let mut tx_id = [0; 32];
         buf.copy_to_slice(&mut tx_id);
-        let vout = buf.get_u32();
+        let vout = buf.get_u32_le();
 
         Ok(Outpoint { tx_id, vout })
     }

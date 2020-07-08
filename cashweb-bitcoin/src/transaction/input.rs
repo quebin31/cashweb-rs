@@ -61,7 +61,7 @@ impl Encodable for Input {
         self.outpoint.encode_raw(buf);
         self.script.len_varint().encode_raw(buf);
         self.script.encode_raw(buf);
-        buf.put_u32(self.sequence);
+        buf.put_u32_le(self.sequence);
     }
 }
 
@@ -89,7 +89,7 @@ impl Decodable for Input {
         if buf.remaining() < 4 {
             return Err(Self::Error::SequenceTooShort);
         }
-        let sequence = buf.get_u32();
+        let sequence = buf.get_u32_le();
 
         Ok(Input {
             outpoint,

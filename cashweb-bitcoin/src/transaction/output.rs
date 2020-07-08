@@ -48,7 +48,7 @@ impl Encodable for Output {
 
     #[inline]
     fn encode_raw<B: BufMut>(&self, buf: &mut B) {
-        buf.put_u64(self.value);
+        buf.put_u64_le(self.value);
         self.script.len_varint().encode_raw(buf);
         self.script.encode_raw(buf);
     }
@@ -63,7 +63,7 @@ impl Decodable for Output {
         if buf.remaining() < 8 {
             return Err(Self::Error::ValueTooShort);
         }
-        let value = buf.get_u64();
+        let value = buf.get_u64_le();
 
         // Get script
         let script_len: u64 = VarInt::decode(buf).map_err(Self::Error::ScriptLen)?.into();
