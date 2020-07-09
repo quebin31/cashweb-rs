@@ -154,8 +154,12 @@ impl Message {
                 if self.payload.is_empty() {
                     return Err(DigestError::DigestAndPayloadMissing);
                 }
-                let slice = &self.payload_digest[..];
-                slice.try_into().unwrap()
+
+                // Calculate digest
+                let payload_digest: [u8; 32] =
+                    digest(&SHA256, &self.payload).as_ref().try_into().unwrap(); // This is safe
+
+                payload_digest
             }
             32 => {
                 // Check digest is correct when payload is not missing
@@ -164,7 +168,7 @@ impl Message {
                     let payload_digest: [u8; 32] =
                         digest(&SHA256, &self.payload).as_ref().try_into().unwrap(); // This is safe
 
-                    if payload_digest[..] == self.payload_digest[..] {
+                    if payload_digest[..] != self.payload_digest[..] {
                         return Err(DigestError::FraudulentDigest);
                     }
                     payload_digest
@@ -339,13 +343,13 @@ impl ParsedMessage {
     ///
     /// This is done in-place, replacing the encrypted `payload` field with the plain text.
     #[inline]
-    pub fn open_in_place(&mut self, private_key: &[u8], salt: &[u8]) -> Result<Opened, OpenError> {
+    pub fn open_in_place(&mut self, private_key: &[u8]) -> Result<Opened, OpenError> {
         // Verify stamp
         let txs = self.verify_stamp().map_err(OpenError::Stamp)?;
 
         // Create shared key
         let shared_key = self
-            .create_shared_key(private_key, salt)
+            .create_shared_key(private_key, &self.salt)
             .map_err(OpenError::SharedKey)?;
 
         // Authenticate HMAC payload
@@ -370,13 +374,13 @@ impl ParsedMessage {
 
     /// Verify the stamp, authenticate the HMAC payload, and then decrypt and decode the payload.
     #[inline]
-    pub fn open(&self, private_key: &[u8], salt: &[u8]) -> Result<Opened, OpenError> {
+    pub fn open(&self, private_key: &[u8]) -> Result<Opened, OpenError> {
         // Verify stamp
         let txs = self.verify_stamp().map_err(OpenError::Stamp)?;
 
         // Create shared key
         let shared_key = self
-            .create_shared_key(private_key, salt)
+            .create_shared_key(private_key, &self.salt)
             .map_err(OpenError::SharedKey)?;
 
         // Authenticate HMAC payload
