@@ -29,7 +29,7 @@ pub enum StampError {
     /// A specified stamp output was not a pay-to-pubkey-hash.
     NotP2PKH,
     /// A specified stamp output contained an unexpected address.
-    UnexpectedAddress,
+    UnexpectedAddress(Vec<u8>, Vec<u8>),
     /// Combination of public keys was degenerate.
     DegenerateCombination,
     /// Child numbers given caused an overflow.
@@ -46,7 +46,9 @@ impl fmt::Display for StampError {
             Self::Decode(err) => return err.fmt(f),
             Self::MissingOutput => "missing output",
             Self::NotP2PKH => "non-p2pkh",
-            Self::UnexpectedAddress => "unexpected address",
+            Self::UnexpectedAddress(x, y) => {
+                return writeln!(f, "unexpected address; {:?} != {:?}", x, y)
+            }
             Self::DegenerateCombination => "degenerate pubkey combination",
             Self::ChildNumberOverflow => "child number is too large",
             Self::UnsupportedStampType => "unsupported stamp type",
@@ -141,7 +143,10 @@ pub fn verify_stamp(
 
             // Check equivalence
             if &hash160_digest[..] != pubkey_hash {
-                return Err(StampError::UnexpectedAddress);
+                return Err(StampError::UnexpectedAddress(
+                    hash160_digest.to_vec(),
+                    pubkey_hash.to_vec(),
+                ));
             }
         }
 
