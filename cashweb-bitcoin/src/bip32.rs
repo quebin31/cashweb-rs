@@ -19,9 +19,9 @@ pub struct HardenedDeriveError;
 /// Represents a child number.
 #[derive(Clone, Copy, Debug)]
 pub enum ChildNumber {
-    /// A "normal" child number is within range [0, 2^31)
+    /// A "normal" child number is within range [0, 2^31 - 1]
     Normal(u32),
-    /// A "hardened" child number is within range [2^31, 2^32)
+    /// A "hardened" child number is within range [0, 2^31 - 1]
     Hardened(u32),
 }
 
@@ -46,7 +46,7 @@ impl ChildNumber {
     }
 
     /// Create a [`ChildNumber::Hardened`] from an index, returns an error if the index is not within
-    /// [2^31, 2^32).
+    /// [0, 2^31).
     pub fn from_hardened_index(index: u32) -> Result<Self, IndexError> {
         if index & (1 << 31) == 0 {
             Ok(ChildNumber::Hardened(index))
@@ -69,7 +69,7 @@ impl From<u32> for ChildNumber {
 /// A wrapper around [`PublicKey`] to allow [`Hierarchical Deterministic Wallets`] public key derivation.
 ///
 /// [`Hierarchical Deterministic Wallets`]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
-#[derive(Clone, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExtendedPublicKey {
     public_key: PublicKey,
     chain_code: [u8; 32],
@@ -121,7 +121,7 @@ impl ExtendedPublicKey {
         } else {
             return Ok(self.clone());
         };
-        for num in path {
+        for num in path_iter {
             public_key = public_key.derive_public_child(secp, *num)?
         }
         Ok(public_key)
@@ -158,7 +158,7 @@ impl ExtendedPublicKey {
 /// A wrapper around [`PrivateKey`] to allow [`Hierarchical Deterministic Wallets`] public key derivation.
 ///
 /// [`Hierarchical Deterministic Wallets`]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExtendedPrivateKey {
     private_key: PrivateKey,
     chain_code: [u8; 32],
@@ -205,7 +205,8 @@ impl ExtendedPrivateKey {
         } else {
             return *self;
         };
-        for num in path {
+        for num in path_iter {
+            println!("a");
             private_key = private_key.derive_private_child(secp, *num);
         }
         private_key
@@ -244,5 +245,77 @@ impl ExtendedPrivateKey {
             private_key,
             chain_code,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::thread_rng;
+    use secp256k1::Secp256k1;
+
+    #[test]
+    fn child_derivation() {
+        let secp = Secp256k1::new();
+        let mut rng = thread_rng();
+        let private_key = PrivateKey::new(&mut rng);
+        let public_key = PublicKey::from_secret_key(&secp, &private_key);
+        let hd_private_key = ExtendedPrivateKey::new_master(private_key, [0; 32]);
+        let hd_public_key = ExtendedPublicKey::new_master(public_key, [0; 32]);
+
+        let new_hd_private_key =
+            hd_private_key.derive_private_child(&secp, ChildNumber::Normal(32));
+        let new_hd_public_key = hd_public_key
+            .derive_public_child(&secp, ChildNumber::Normal(32))
+            .unwrap();
+
+        assert_eq!(
+            PublicKey::from_secret_key(&secp, &new_hd_private_key.into_private_key()),
+            new_hd_public_key.into_public_key()
+        );
+    }
+
+    #[test]
+    fn child_derivation_normal_path_a() {
+        let secp = Secp256k1::new();
+        let mut rng = thread_rng();
+
+        let path = [ChildNumber::Normal(32), ChildNumber::Normal(4)];
+
+        let private_key = PrivateKey::new(&mut rng);
+        let public_key = PublicKey::from_secret_key(&secp, &private_key);
+        let hd_private_key = ExtendedPrivateKey::new_master(private_key, [0; 32]);
+        let hd_public_key = ExtendedPublicKey::new_master(public_key, [0; 32]);
+
+        let new_hd_private_key = hd_private_key.derive_private_path(&secp, &path);
+        let new_hd_public_key = hd_public_key.derive_public_path(&secp, &path).unwrap();
+
+        assert_eq!(
+            PublicKey::from_secret_key(&secp, &new_hd_private_key.into_private_key()),
+            new_hd_public_key.into_public_key()
+        );
+    }
+
+    #[test]
+    fn child_derivation_normal_path_b() {
+        let secp = Secp256k1::new();
+        let mut rng = thread_rng();
+
+        let path = [
+            ChildNumber::Normal(32),
+            ChildNumber::Normal(4),
+            ChildNumber::Normal(54),
+        ];
+
+        let private_key = PrivateKey::new(&mut rng);
+        let hd_private_key = ExtendedPrivateKey::new_master(private_key, [0; 32]);
+
+        let hd_private_key_a = hd_private_key.derive_private_path(&secp, &path);
+        let hd_private_key_b = hd_private_key
+            .derive_private_child(&secp, path[0])
+            .derive_private_child(&secp, path[1])
+            .derive_private_child(&secp, path[2]);
+
+        assert_eq!(hd_private_key_a, hd_private_key_b);
     }
 }
