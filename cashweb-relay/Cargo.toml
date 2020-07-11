@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-relay"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 
