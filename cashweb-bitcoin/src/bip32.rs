@@ -119,7 +119,7 @@ impl ExtendedPublicKey {
         let mut public_key = if let Some(num) = path_iter.next() {
             self.derive_public_child(secp, *num)?
         } else {
-            return Ok(self.clone());
+            return Ok(*self);
         };
         for num in path_iter {
             public_key = public_key.derive_public_child(secp, *num)?
