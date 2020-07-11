@@ -3,6 +3,12 @@ name = "cashweb-bitcoin"
 version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/cashweb/cashweb-rs"
+repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin"]
+description = "A library providing serialization/deserialization of Bitcoin structures, utility methods for signing, and methods for Hierarchical Deterministic Wallets use."
+categories = ["development-tools"]
 
 [dependencies]
 bytes = "0.5.5"

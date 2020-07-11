@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 homepage = "https://github.com/cashweb/cashweb-rs"
 repository = "https://github.com/cashweb/cashweb-rs"
-keywords = ["cashweb", "payments"]
+keywords = ["cashweb", "bitcoin", "payments"]
 description = "A helper library for cash:web payments."
 categories = ["development-tools"]
 

@@ -3,6 +3,12 @@ name = "cashweb-auth-wrapper"
 version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/cashweb/cashweb-rs"
+repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin", "authorization"]
+description = "A library providing deserialization, parsing, and verification needed within the cash:web Authorization Wrapper Framework"
+categories = ["development-tools"]
 
 [dependencies]
 ring = "0.16.15"

@@ -3,6 +3,12 @@ name = "cashweb-relay"
 version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/cashweb/cashweb-rs"
+repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin", "relay"]
+description = "`cashweb-relay` is a library providing serialization/deserialization, encryption/decryption/verification of structures in the Relay Protocol."
+categories = ["development-tools"]
 
 [dependencies]
 aes = "0.4.0"

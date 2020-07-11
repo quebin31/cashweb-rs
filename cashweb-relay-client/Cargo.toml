@@ -3,6 +3,12 @@ name = "cashweb-relay-client"
 version = "0.1.0-alpha.0"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/cashweb/cashweb-rs"
+repository = "https://github.com/cashweb/cashweb-rs"
+keywords = ["cashweb", "bitcoin", "relay", "client"]
+description = "A library providing a client for use within the cash:web Relay Protocol"
+categories = ["development-tools"]
 
 [dependencies]
 futures-core = "0.3.5"
