@@ -8,8 +8,6 @@
 //! `cashweb-bitcoin-client` is a library providing a [`BitcoinClient`] with
 //! basic asynchronous methods for interacting with bitcoind.
 
-use std::fmt;
-
 use hex::FromHexError;
 use hyper::{
     client::HttpConnector, Body, Client as HyperClient, Error as HyperError,
@@ -19,11 +17,12 @@ use hyper_tls::HttpsConnector;
 use json_rpc::{
     clients::{
         http::{Client as JsonClient, ConnectionError},
-        Error,
+        Error as RpcCallError,
     },
     prelude::{JsonError, RequestFactory, RpcError},
 };
 use serde_json::Value;
+use thiserror::Error;
 use tower_service::Service;
 
 /// Standard HTTP client.
@@ -78,42 +77,29 @@ impl<C> std::ops::Deref for BitcoinClient<C> {
 }
 
 /// Error associated with the Bitcoin RPC.
-#[derive(Debug)]
-pub enum NodeError<E> {
+#[derive(Debug, Error)]
+pub enum NodeError<E: std::fmt::Debug + std::fmt::Display + 'static> {
     /// Error connecting to bitcoind.
-    Http(Error<ConnectionError<E>>),
+    #[error(transparent)]
+    Http(RpcCallError<ConnectionError<E>>),
     /// bitcoind responded with an JSON-RPC error.
+    #[error("{0:?}")]
     Rpc(RpcError),
     /// Failed to deserialize response JSON.
+    #[error(transparent)]
     Json(JsonError),
     /// The response JSON was empty.
+    #[error("empty response")]
     EmptyResponse,
     /// Failed to decode hexidecimal response.
-    HexDecode(FromHexError),
-}
-
-impl<E> From<FromHexError> for NodeError<E> {
-    fn from(err: FromHexError) -> Self {
-        Self::HexDecode(err)
-    }
-}
-
-impl<E: fmt::Display> fmt::Display for NodeError<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Http(err) => err.fmt(f),
-            Self::Json(err) => err.fmt(f),
-            Self::Rpc(err) => f.write_str(&format!("{:#?}", err)),
-            Self::EmptyResponse => f.write_str("empty response"),
-            Self::HexDecode(err) => err.fmt(f),
-        }
-    }
+    #[error(transparent)]
+    HexDecode(#[from] FromHexError),
 }
 
 impl<S> BitcoinClient<S>
 where
     S: Service<HttpRequest<Body>, Response = HttpResponse<Body>> + Clone,
-    S::Error: 'static,
+    S::Error: std::fmt::Debug + std::fmt::Display + 'static,
     S::Future: Send + 'static,
 {
     /// Calls the `getnewaddress` method.

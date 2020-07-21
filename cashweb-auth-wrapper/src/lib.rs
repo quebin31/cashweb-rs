@@ -12,10 +12,11 @@
 #[allow(unreachable_pub)]
 mod models;
 
-use std::{convert::TryInto, fmt};
+use std::convert::TryInto;
 
 use ring::digest::{digest, SHA256};
 use secp256k1::{key::PublicKey, Error as SecpError, Message, Secp256k1, Signature};
+use thiserror::Error;
 
 pub use models::{auth_wrapper::SignatureScheme, AuthWrapper};
 
@@ -35,34 +36,26 @@ pub struct ParsedAuthWrapper {
 }
 
 /// Error associated with validation and parsing of the [`AuthWrapper`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ParseError {
     /// The public key provided was invalid.
+    #[error(transparent)]
     PublicKey(SecpError),
     /// The signature provided was an invalid format.
+    #[error(transparent)]
     Signature(SecpError),
     /// The signature scheme provided is unsupported.
+    #[error("unsupported signature scheme")]
     UnsupportedScheme,
     /// The `payload_digest` provided was fraudulent.
+    #[error("fraudulent digest")]
     FraudulentDigest,
     /// Both the digest and the payload were missing.
+    #[error("digest and payload missing")]
     DigestAndPayloadMissing,
     /// The `payload_digest` was not 32 bytes long.
+    #[error("unexpected length digest")]
     UnexpectedLengthDigest,
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::PublicKey(err) => return err.fmt(f),
-            Self::Signature(err) => return err.fmt(f),
-            Self::UnsupportedScheme => "unsupported signature scheme",
-            Self::FraudulentDigest => "fraudulent digest",
-            Self::DigestAndPayloadMissing => "digest and payload missing",
-            Self::UnexpectedLengthDigest => "unexpected length digest",
-        };
-        f.write_str(printable)
-    }
 }
 
 impl AuthWrapper {
@@ -114,21 +107,14 @@ impl AuthWrapper {
 }
 
 /// Error associated with verifying the signature of an [`AuthWrapper`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum VerifyError {
     /// The signature failed verification.
+    #[error(transparent)]
     InvalidSignature(SecpError),
     /// The signature scheme provided is unsupported.
+    #[error("unsupported signature scheme")]
     UnsupportedScheme,
-}
-
-impl fmt::Display for VerifyError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidSignature(err) => err.fmt(f),
-            Self::UnsupportedScheme => f.write_str("unsupported signature scheme"),
-        }
-    }
 }
 
 impl ParsedAuthWrapper {

@@ -1,9 +1,8 @@
 //! This module contains the [`Input`] struct which represents a Bitcoin transaction input.
 //! It enjoys [`Encodable`] and [`Decodable`].
 
-use std::fmt;
-
 use bytes::{Buf, BufMut};
+use thiserror::Error;
 
 use super::{
     outpoint::{DecodeError as OutpointDecodeError, Outpoint},
@@ -15,27 +14,20 @@ use crate::{
 };
 
 /// Error associated with [`Input`] deserialization.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum DecodeError {
     /// Failed to decode [`Outpoint`].
+    #[error("outpoint: {0}")]
     Outpoint(OutpointDecodeError),
     /// Failed to decode script length [`VarInt`].
+    #[error("script length: {0}")]
     ScriptLen(VarIntDecodeError),
     /// Exhausted buffer when decoding `script` field.
+    #[error("script too short")]
     ScriptTooShort,
     /// Exhausted buffer when decoding `sequence` field.
+    #[error("sequence number too short")]
     SequenceTooShort,
-}
-
-impl fmt::Display for DecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Outpoint(err) => f.write_str(&format!("outpoint; {}", err)),
-            Self::ScriptLen(err) => f.write_str(&format!("script length; {}", err)),
-            Self::ScriptTooShort => f.write_str("script too short"),
-            Self::SequenceTooShort => f.write_str("sequence number too short"),
-        }
-    }
 }
 
 /// Represents an input.

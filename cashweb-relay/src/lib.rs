@@ -14,7 +14,7 @@
 mod models;
 pub mod stamp;
 
-use std::{convert::TryInto, fmt};
+use std::convert::TryInto;
 
 use aes::{
     block_cipher::generic_array::{typenum::U16, GenericArray},
@@ -28,6 +28,7 @@ use ring::{
     hmac::{sign, Key as HmacKey, HMAC_SHA256},
 };
 use secp256k1::{key::PublicKey, Error as SecpError, Secp256k1};
+use thiserror::Error;
 
 pub mod secp {
     //! This module contains re-exported `secp256k1` primitives.
@@ -89,58 +90,40 @@ impl ParsedMessage {
 }
 
 /// Error associated with [`Message`] parsing.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ParseError {
     /// Unable to calculate the [`Message::payload_digest`].
+    #[error(transparent)]
     Digest(DigestError),
     /// Unable to parse the [`Message::source_public_key`].
+    #[error("source public key: {0}")]
     SourcePublicKey(SecpError),
     /// Unable to parse the [`Message::destination_public_key`].
+    #[error("destination public key: {0}")]
     DestinationPublicKey(SecpError),
     /// Stamp information missing.
+    #[error("missing stamp")]
     MissingStamp,
     /// Unsupported stamp type given.
+    #[error("unsupported stamp type")]
     UnsupportedStampType,
     /// Payload HMAC was an unexpected length.
+    #[error("unexpected length payload hmac")]
     UnexpectedLengthPayloadHmac,
 }
 
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::Digest(err) => return err.fmt(f),
-            Self::SourcePublicKey(err) => return writeln!(f, "source public key: {}", err),
-            Self::DestinationPublicKey(err) => {
-                return writeln!(f, "destination public key: {}", err)
-            }
-            Self::MissingStamp => "missing stamp",
-            Self::UnsupportedStampType => "unsupported stamp type",
-            Self::UnexpectedLengthPayloadHmac => "unexpected length payload hmac",
-        };
-        f.write_str(printable)
-    }
-}
-
 /// Error associated with getting the [`Message::payload_digest`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum DigestError {
     /// Both the digest and payload are missing.
+    #[error("digest and payload missing")]
     DigestAndPayloadMissing,
     /// Fraudulent digest.
+    #[error("fraudulent digest")]
     FraudulentDigest,
     /// Digest was an unexpected length.
+    #[error("unexpected length digest")]
     UnexpectedLengthDigest,
-}
-
-impl fmt::Display for DigestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::DigestAndPayloadMissing => "digest and payload missing",
-            Self::FraudulentDigest => "fraudulent digest",
-            Self::UnexpectedLengthDigest => "unexpected length digest",
-        };
-        f.write_str(printable)
-    }
 }
 
 impl Message {
@@ -254,7 +237,8 @@ pub fn create_shared_key(
 }
 
 /// Message authentication failed, the calculated HMAC did not match the one given.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Error)]
+#[error("invalid hmac")]
 pub struct InvalidHmac;
 
 /// Authenticate the [`Payload`] and return the merged key.
@@ -291,20 +275,23 @@ pub struct Opened {
 ///
 /// [`open`]: ParsedMessage::open
 /// [`open_in_place`]: ParsedMessage::open_in_place
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum OpenError {
     /// Invalid stamp.
+    #[error("stamp errror: {0}")]
     Stamp(StampError),
     /// Failed to construct shared key.
+    #[error("shared key: {0}")]
     SharedKey(SecpError),
     /// Failed authentication.
+    #[error("authentication failed")]
     Authentication,
     /// Failed to decode the plaintext [`Payload`].
+    #[error("payload decoding failure: {0}")]
     Payload(MessageDecodeError),
     /// Failed to decrypt the ciphertext [`Payload`].
+    #[error("decryption failure: {0}")]
     Decrypt(BlockModeError),
-    /// Degenerate multiplication of public keys.
-    Mul(SecpError),
 }
 
 impl ParsedMessage {

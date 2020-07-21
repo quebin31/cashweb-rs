@@ -192,7 +192,7 @@ where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
     S::Future: Send,
-    S::Error: fmt::Debug + Send,
+    S::Error: fmt::Debug + fmt::Display + Send,
 {
     /// Perform a uniform sample of metadata over keyservers and select the latest.
     pub async fn uniform_sample_metadata(

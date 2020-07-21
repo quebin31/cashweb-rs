@@ -14,11 +14,10 @@
 
 pub mod wallet;
 
-use std::fmt;
-
 use bytes::Bytes;
 use http::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
 use prost::{DecodeError, Message};
+use thiserror::Error;
 
 #[allow(missing_docs)]
 pub mod bip70 {
@@ -32,25 +31,17 @@ pub mod bip70 {
 use bip70::Payment;
 
 /// Error associated with payment preprocessing.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum PreprocessingError {
     /// Missing the `application/bitcoincash-paymentack` header.
+    #[error("missing accept header")]
     MissingAcceptHeader,
     /// Missing the `application/bitcoincash-payment` header.
+    #[error("invalid content-type")]
     MissingContentTypeHeader,
     /// Failed to decode the `Payment` protobuf.
+    #[error("payment decoding failure: {0}")]
     PaymentDecode(DecodeError),
-}
-
-impl fmt::Display for PreprocessingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::MissingAcceptHeader => "not acceptable",
-            Self::MissingContentTypeHeader => "invalid content-type",
-            Self::PaymentDecode(err) => return err.fmt(f),
-        };
-        f.write_str(printable)
-    }
 }
 
 /// Validates and parses the BIP70 payment.

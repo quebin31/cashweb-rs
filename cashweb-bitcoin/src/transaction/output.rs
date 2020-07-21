@@ -1,9 +1,8 @@
 //! This module contains the [`Output`] struct which represents a Bitcoin transaction output.
 //! It enjoys [`Encodable`] and [`Decodable`].
 
-use std::fmt;
-
 use bytes::{Buf, BufMut};
+use thiserror::Error;
 
 use super::script::Script;
 use crate::{
@@ -12,24 +11,17 @@ use crate::{
 };
 
 /// Error associated with [`Output`] deserialization.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum DecodeError {
     /// Value is too short.
+    #[error("value too short")]
     ValueTooShort,
     /// Unable to decode the script length variable-length integer.
+    #[error("script length: {0}")]
     ScriptLen(VarIntDecodeError),
     /// Script is too short.
+    #[error("script too short")]
     ScriptTooShort,
-}
-
-impl fmt::Display for DecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ValueTooShort => f.write_str("value too short"),
-            Self::ScriptLen(err) => f.write_str(&format!("script length: {}", err)),
-            Self::ScriptTooShort => f.write_str("script too short"),
-        }
-    }
 }
 
 /// Represents an output.

@@ -12,43 +12,36 @@ use bitcoin::{
 use bitcoin_client::{BitcoinClient, HttpClient, HttpsClient, NodeError};
 use hyper::{Body, Request as HttpRequest, Response as HttpResponse};
 use ring::digest::{Context, SHA256};
+use thiserror::Error;
 use tower_service::Service;
 
 /// Error associated with token validation.
-#[derive(Debug)]
-pub enum ValidationError<E> {
+#[derive(Debug, Error)]
+pub enum ValidationError<E: fmt::Debug + fmt::Display + 'static> {
     /// Failed to decode token.
+    #[error("failed to decode token: {0}")]
     Base64(base64::DecodeError),
     /// Speficied script was unexpected length.
+    #[error("unexpected script length")]
     IncorrectLength,
     /// Token was invalid.
+    #[error("invalid token")]
     Invalid,
     /// Error occured when communicating with bitcoind.
+    #[error(transparent)]
     Node(NodeError<E>),
     /// Specified output was not an `OP_RETURN`.
+    #[error("output is not an op return format")]
     NotOpReturn,
     /// Specified output did not exist.
+    #[error("output missing")]
     OutputNotFound,
     /// Error decoding specified transaction.
+    #[error("failed to decode transaction: {0}")]
     Transaction(TransactionDecodeError),
     /// Token was unexpected length.
+    #[error("unexpected token length")]
     TokenLength,
-}
-
-impl<E: fmt::Display> fmt::Display for ValidationError<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::Base64(err) => return err.fmt(f),
-            Self::IncorrectLength => "unexpected script length",
-            Self::Invalid => "invalid token",
-            Self::Node(err) => return err.fmt(f),
-            Self::NotOpReturn => "not op return",
-            Self::OutputNotFound => "output missing",
-            Self::Transaction(err) => return err.fmt(f),
-            Self::TokenLength => "unexpected token length",
-        };
-        f.write_str(printable)
-    }
 }
 
 /// Chain commitment scheme used in the keyserver protocol.
@@ -107,7 +100,7 @@ impl ChainCommitmentScheme<HttpsClient> {
 impl<S> ChainCommitmentScheme<S>
 where
     S: Service<HttpRequest<Body>, Response = HttpResponse<Body>> + Clone,
-    S::Error: 'static,
+    S::Error: fmt::Debug + fmt::Display + 'static,
     S::Future: Send + 'static,
 {
     /// Validate a token.

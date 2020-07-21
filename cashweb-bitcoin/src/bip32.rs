@@ -7,13 +7,16 @@ use std::convert::TryInto;
 
 use ring::hmac::{sign as hmac, Key as HmacKey, HMAC_SHA512};
 pub use secp256k1::{Error as SecpError, PublicKey, Secp256k1, SecretKey as PrivateKey};
+use thiserror::Error;
 
 /// Error associated with child number construction.
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("index error: {0}")]
 pub struct IndexError(u32);
 
 /// Public key to public key derivation can not be performed for a hardened key.
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("hardened derivation error")]
 pub struct HardenedDeriveError;
 
 /// Represents a child number.
@@ -26,11 +29,13 @@ pub enum ChildNumber {
 }
 
 /// Error associated with the derivation of a [`ExtendedPublicKey`].
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum DeriveError {
     /// Public key to public key derivation can not be performed for a hardened key.
+    #[error("hardened derivation error")]
     HardenedDeriveError,
     /// Invalid Tweak.
+    #[error(transparent)]
     InvalidTweak(SecpError),
 }
 

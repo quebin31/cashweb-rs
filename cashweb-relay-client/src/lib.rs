@@ -10,12 +10,15 @@
 
 pub mod services;
 
+use std::{error, fmt};
+
 pub use hyper::{
     client::{connect::Connect, HttpConnector},
     Uri,
 };
 use hyper::{http::uri::InvalidUri, Client as HyperClient};
 use secp256k1::key::PublicKey;
+use thiserror::Error;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
@@ -53,18 +56,14 @@ impl RelayClient<HyperClient<HttpConnector>> {
 }
 
 /// Error associated with sending a request to a relay server.
-#[derive(Debug)]
-pub enum RelayError<E> {
+#[derive(Debug, Error)]
+pub enum RelayError<E: fmt::Debug + fmt::Display + error::Error + 'static> {
     /// Invalid URI.
+    #[error(transparent)]
     Uri(InvalidUri),
     /// Error executing the service method.
-    Error(E),
-}
-
-impl<E> From<E> for RelayError<E> {
-    fn from(err: E) -> Self {
-        Self::Error(err)
-    }
+    #[error("failed to execute service method: {0}")]
+    Error(#[from] E),
 }
 
 /// A [`Profile`] paired with its [`PublicKey`].
@@ -81,6 +80,7 @@ where
     Self: Service<(Uri, GetProfile), Response = ProfilePackage>,
     Self: Sync + Clone + Send + 'static,
     <Self as Service<(Uri, GetProfile)>>::Future: Send + Sync + 'static,
+    <Self as Service<(Uri, GetProfile)>>::Error: fmt::Debug + fmt::Display + error::Error,
 {
     /// Get [`Profile`] from a server. The result is wrapped in [`ProfilePackage`].
     pub async fn get_profile(
@@ -107,6 +107,7 @@ where
     Self: Service<(Uri, PutProfile), Response = ()>,
     Self: Sync + Clone + Send + 'static,
     <Self as Service<(Uri, PutProfile)>>::Future: Send + Sync + 'static,
+    <Self as Service<(Uri, PutProfile)>>::Error: fmt::Debug + fmt::Display + error::Error,
 {
     /// Put a [`Profile`] to a relay server.
     pub async fn put_profile(

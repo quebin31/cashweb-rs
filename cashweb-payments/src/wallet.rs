@@ -3,17 +3,13 @@
 use std::{fmt, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
+use thiserror::Error;
 use tokio::time::delay_for;
 
 /// Received unexpected outputs.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("received unexpected outputs")]
 pub struct UnexpectedOutputs;
-
-impl fmt::Display for UnexpectedOutputs {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("received unexpected outputs")
-    }
-}
 
 /// Provides a simple interface to allow parallel caching and retrieval of UTXOs.
 #[derive(Clone)]

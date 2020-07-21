@@ -1,7 +1,5 @@
 //! This module contains the [`Stamp`] message and methods for verifying and constructing them.
 
-use std::fmt;
-
 use bitcoin::{
     bip32::*,
     transaction::{DecodeError as TransactionDecodeError, Transaction},
@@ -13,6 +11,7 @@ use secp256k1::{
     key::{PublicKey, SecretKey as PrivateKey},
     Error as SecpError, Secp256k1,
 };
+use thiserror::Error;
 
 pub use crate::{
     create_shared_key,
@@ -20,42 +19,32 @@ pub use crate::{
 };
 
 /// Error associated with verification of stamps.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum StampError {
     /// Failed to decode a transaction.
+    #[error("failed to decode transaction: {0}")]
     Decode(TransactionDecodeError),
     /// A specified stamp output doesn't exist.
+    #[error("missing output")]
     MissingOutput,
     /// A specified stamp output was not a pay-to-pubkey-hash.
+    #[error("output is non-p2pkh")]
     NotP2PKH,
     /// A specified stamp output contained an unexpected address.
+    #[error("unexpected address: {0:?} != {1:?}")]
     UnexpectedAddress(Vec<u8>, Vec<u8>),
     /// Combination of public keys was degenerate.
+    #[error("degenerate pubkey combination")]
     DegenerateCombination,
     /// Child numbers given caused an overflow.
+    #[error("child number is too large")]
     ChildNumberOverflow,
     /// Unsupported stamp type.
+    #[error("unsupported stamp type")]
     UnsupportedStampType,
     /// Stamp type was `None`.
+    #[error("stamp type is none")]
     NoneType,
-}
-
-impl fmt::Display for StampError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let printable = match self {
-            Self::Decode(err) => return err.fmt(f),
-            Self::MissingOutput => "missing output",
-            Self::NotP2PKH => "non-p2pkh",
-            Self::UnexpectedAddress(x, y) => {
-                return writeln!(f, "unexpected address; {:?} != {:?}", x, y)
-            }
-            Self::DegenerateCombination => "degenerate pubkey combination",
-            Self::ChildNumberOverflow => "child number is too large",
-            Self::UnsupportedStampType => "unsupported stamp type",
-            Self::NoneType => "stamp type is none",
-        };
-        f.write_str(printable)
-    }
 }
 
 impl Stamp {
@@ -157,11 +146,13 @@ pub fn verify_stamp(
 }
 
 /// Error associated with creating stamp private keys.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum StampKeyError {
     /// Degenerate addition of private keys.
+    #[error(transparent)]
     Addition(SecpError),
     /// Child numbers given caused an overflow.
+    #[error("child number is too large")]
     ChildNumberOverflow,
 }
 
