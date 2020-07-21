@@ -1,9 +1,8 @@
 //! This module contains the [`Outpoint`] struct which represents a Bitcoin transaction outpoint.
 //! It enjoys [`Encodable`] and [`Decodable`].
 
-use std::fmt;
-
 use bytes::{Buf, BufMut};
+use thiserror::Error;
 
 use crate::{Decodable, Encodable};
 
@@ -29,14 +28,9 @@ impl Encodable for Outpoint {
 }
 
 /// Error associated with [`Outpoint`] deserialization.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+#[error("outpoint too short")]
 pub struct DecodeError;
-
-impl fmt::Display for DecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("outpoint too short")
-    }
-}
 
 impl Decodable for Outpoint {
     type Error = DecodeError;

@@ -2,10 +2,13 @@
 
 pub mod services;
 
+use std::{error, fmt};
+
 use bytes::Bytes;
 use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient};
 use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
+use thiserror::Error;
 use tower_service::Service;
 use tower_util::ServiceExt;
 
@@ -13,18 +16,14 @@ use crate::models::*;
 use services::*;
 
 /// Error associated with sending a request to a keyserver.
-#[derive(Debug)]
-pub enum KeyserverError<E> {
+#[derive(Debug, Error)]
+pub enum KeyserverError<E: fmt::Display + error::Error + 'static> {
     /// Invalid URI.
+    #[error(transparent)]
     Uri(InvalidUri),
     /// Error executing the service method.
-    Error(E),
-}
-
-impl<E> From<E> for KeyserverError<E> {
-    fn from(err: E) -> Self {
-        Self::Error(err)
-    }
+    #[error("failed to execute service method: {0}")]
+    Error(#[from] E),
 }
 
 /// The [`AddressMetadata`] paired with its [`PublicKey`], the raw [`AuthWrapper`] and a [`POP token`].
@@ -101,6 +100,7 @@ impl<S> KeyserverClient<S>
 where
     Self: Service<(Uri, GetPeers), Response = Peers>,
     Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, GetPeers)>>::Error: fmt::Display + std::error::Error,
     <Self as Service<(Uri, GetPeers)>>::Future: Send + Sync + 'static,
 {
     /// Get [`Peers`] from a keyserver.
@@ -126,6 +126,7 @@ impl<S> KeyserverClient<S>
 where
     Self: Service<(Uri, GetMetadata), Response = MetadataPackage>,
     Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, GetMetadata)>>::Error: fmt::Display + std::error::Error,
     <Self as Service<(Uri, GetMetadata)>>::Future: Send + Sync + 'static,
 {
     /// Get [`AddressMetadata`] from a server. The result is wrapped in [`MetadataPackage`].
@@ -152,6 +153,7 @@ impl<S> KeyserverClient<S>
 where
     Self: Service<(Uri, PutMetadata), Response = ()>,
     Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, PutMetadata)>>::Error: fmt::Display + std::error::Error,
     <Self as Service<(Uri, PutMetadata)>>::Future: Send + Sync + 'static,
 {
     /// Put [`AuthWrapper`] to a keyserver.
@@ -187,6 +189,7 @@ impl<S> KeyserverClient<S>
 where
     Self: Service<(Uri, PutRawAuthWrapper), Response = ()>,
     Self: Sync + Clone + Send + 'static,
+    <Self as Service<(Uri, PutRawAuthWrapper)>>::Error: std::error::Error,
     <Self as Service<(Uri, PutRawAuthWrapper)>>::Future: Send + Sync + 'static,
 {
     /// Put raw [`AuthWrapper`] to a keyserver.

@@ -1,25 +1,17 @@
 //! This module contains [`HmacScheme`] which provides a rudimentary HMAC validation scheme.
 
-use std::fmt;
-
 use ring::hmac;
+use thiserror::Error;
 
 /// Error associated with basic HMAC token validation.
-#[derive(Debug)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum ValidationError {
     /// Failed to decode token.
+    #[error("failed to decode token: {0}")]
     Base64(base64::DecodeError),
     /// Token was invalid.
+    #[error("invalid token")]
     Invalid,
-}
-
-impl fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Base64(err) => err.fmt(f),
-            Self::Invalid => f.write_str("invalid token"),
-        }
-    }
 }
 
 /// Basic HMAC token scheme.

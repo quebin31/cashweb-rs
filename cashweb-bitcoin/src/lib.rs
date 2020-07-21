@@ -19,9 +19,11 @@ use std::convert::TryFrom;
 
 use bytes::{Buf, BufMut};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Insufficient capacity in buffer when encoding a Bitcoin structure.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+#[error("buffer has insufficient capacity")]
 pub struct InsufficientCapacity;
 
 /// Provides a common interface for the serialization of bitcoin structures.
@@ -65,7 +67,8 @@ pub enum Network {
 }
 
 /// Network was unexpected.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+#[error("unexpected network given")]
 pub struct UnexpectedNetwork;
 
 impl TryFrom<String> for Network {

@@ -18,6 +18,7 @@ pub use hyper::{
     Uri,
 };
 use prost::{DecodeError, Message as _};
+use thiserror::Error;
 use tower_service::Service;
 
 use super::{KeyserverClient, MetadataPackage, RawAuthWrapperPackage};
@@ -31,17 +32,22 @@ type FutResponse<Response, Error> =
 pub struct GetPeers;
 
 /// Error associated with getting [`Peers`] from a keyserver.
-#[derive(Debug)]
-pub enum GetPeersError<E> {
+#[derive(Debug, Error)]
+pub enum GetPeersError<E: fmt::Debug + fmt::Display> {
     /// Error while processing the body.
+    #[error("processing body failed: {0}")]
     Body(HyperError),
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Error while decoding the body.
+    #[error("body decoding failure: {0}")]
     Decode(DecodeError),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
-    /// Peering is disabled on the
+    /// Peering is disabled on the keyserver.
+    #[error("peering disabled")]
     PeeringDisabled,
 }
 
@@ -49,6 +55,8 @@ impl<S> Service<(Uri, GetPeers)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
+    S::Error: fmt::Debug,
+    <S as Service<Request<Body>>>::Error: fmt::Display,
     <S as Service<Request<Body>>>::Future: Send,
 {
     type Response = Peers;
@@ -95,15 +103,19 @@ where
 pub struct GetRawAuthWrapper;
 
 /// Error associated with getting raw [`AuthWrapper`] from a keyserver.
-#[derive(Debug)]
-pub enum GetRawAuthWrapperError<E> {
+#[derive(Debug, Error)]
+pub enum GetRawAuthWrapperError<E: fmt::Debug + fmt::Display> {
     /// Error while processing the body.
+    #[error("processing body failed: {0}")]
     Body(HyperError),
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
     /// POP token missing from headers.
+    #[error("missing token")]
     MissingToken,
 }
 
@@ -111,7 +123,8 @@ impl<S> Service<(Uri, GetRawAuthWrapper)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
 {
     type Response = RawAuthWrapperPackage;
     type Error = GetRawAuthWrapperError<S::Error>;
@@ -173,23 +186,31 @@ where
 pub struct GetMetadata;
 
 /// Error associated with getting [`AddressMetadata`] from a keyserver.
-#[derive(Debug)]
-pub enum GetMetadataError<E> {
+#[derive(Debug, Error)]
+pub enum GetMetadataError<E: fmt::Debug + fmt::Display> {
     /// Error while decoding the [`AddressMetadata`]
+    #[error("metadata decoding failure: {0}")]
     MetadataDecode(DecodeError),
     /// Error while decoding the [`AuthWrapper`].
+    #[error("authwrapper decoding failure: {0}")]
     AuthWrapperDecode(DecodeError),
     /// Error while parsing the [`AuthWrapper`].
+    #[error("authwrapper parsing failure: {0}")]
     AuthWrapperParse(ParseError),
     /// Error while parsing the [`AuthWrapper`].
+    #[error("authwrapper verification failure: {0}")]
     AuthWrapperVerify(VerifyError),
     /// Error while processing the body.
+    #[error("processing body failed: {0}")]
     Body(HyperError),
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
     /// POP token missing from headers.
+    #[error("missing token")]
     MissingToken,
 }
 
@@ -197,7 +218,8 @@ impl<S> Service<(Uri, GetMetadata)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
 {
     type Response = MetadataPackage;
     type Error = GetMetadataError<S::Error>;
@@ -282,11 +304,13 @@ pub struct PutMetadata {
 }
 
 /// Error associated with putting [`AddressMetadata`] to the keyserver.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PutMetadataError<E> {
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum PutMetadataError<E: fmt::Debug + fmt::Display> {
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
 }
 
@@ -294,7 +318,8 @@ impl<S> Service<(Uri, PutMetadata)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
+    S::Future: Send,
 {
     type Response = ();
     type Error = PutMetadataError<S::Error>;
@@ -353,7 +378,8 @@ impl<S> Service<(Uri, PutRawAuthWrapper)> for KeyserverClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
+    S::Future: Send,
 {
     type Response = ();
     type Error = PutMetadataError<S::Error>;
@@ -408,11 +434,13 @@ pub struct SampleRequest<T> {
 }
 
 /// Error associated with sending sample requests.
-#[derive(Debug)]
-pub enum SampleError<E> {
+#[derive(Debug, Error)]
+pub enum SampleError<E: fmt::Debug + fmt::Display> {
     /// Error while polling service.
+    #[error("polling failure: {0}")]
     Poll(E),
     /// Sample totally failed. Contains errors paired with the [`Uri`] of the keyserver they originated at.
+    #[error("sampling failure: {0:?}")] // TODO: Make this prettier
     Sample(Vec<(Uri, E)>),
 }
 
@@ -422,7 +450,7 @@ where
     S: Send + Clone + 'static,
     Self: Service<(Uri, T)>,
     <Self as Service<(Uri, T)>>::Response: Send + fmt::Debug,
-    <Self as Service<(Uri, T)>>::Error: fmt::Debug + Send,
+    <Self as Service<(Uri, T)>>::Error: fmt::Debug + fmt::Display + Send,
     <Self as Service<(Uri, T)>>::Future: Send,
 {
     #[allow(clippy::type_complexity)]

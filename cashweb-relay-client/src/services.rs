@@ -1,6 +1,6 @@
 //! This module contains lower-level primitives for working with the [`RelayClient`].
 
-use std::pin::Pin;
+use std::{fmt, pin::Pin};
 
 use futures_core::{
     task::{Context, Poll},
@@ -16,6 +16,7 @@ pub use hyper::{
     Uri,
 };
 use prost::{DecodeError, Message as _};
+use thiserror::Error;
 use tower_service::Service;
 
 use super::RelayClient;
@@ -30,17 +31,22 @@ type ResponseFuture<Response, Error> =
 pub struct GetProfile;
 
 /// Error associated with getting a [`Profile`] from a relay server.
-#[derive(Debug)]
-pub enum GetProfileError<E> {
+#[derive(Debug, Error)]
+pub enum GetProfileError<E: fmt::Debug + fmt::Display> {
     /// Error while decoding the [`Profile`]
-    MetadataDecode(DecodeError),
+    #[error("profile decoding failure: {0}")]
+    ProfileDecode(DecodeError),
     /// Error while decoding the [`AuthWrapper`].
+    #[error("authwrapper decoding failure: {0}")]
     AuthWrapperDecode(DecodeError),
     /// Error while processing the body.
+    #[error("processing body failed: {0}")]
     Body(HyperError),
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
 }
 
@@ -51,7 +57,8 @@ impl<S> Service<(Uri, GetProfile)> for RelayClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
 {
     type Response = AuthWrapper;
     type Error = GetProfileError<S::Error>;
@@ -96,11 +103,13 @@ where
 }
 
 /// Error associated with putting [`Profile`] to the relay server.
-#[derive(Clone, Debug)]
-pub enum PutProfileError<E> {
+#[derive(Clone, Debug, Error)]
+pub enum PutProfileError<E: fmt::Debug + fmt::Display> {
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
 }
 
@@ -117,7 +126,8 @@ impl<S> Service<(Uri, PutProfile)> for RelayClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
 {
     type Response = ();
     type Error = PutProfileError<S::Error>;
@@ -164,15 +174,19 @@ where
 }
 
 /// Error associated with getting a [`MessagePage`] to the relay server.
-#[derive(Debug)]
-pub enum GetMessageError<E> {
+#[derive(Debug, Error)]
+pub enum GetMessageError<E: fmt::Debug + fmt::Display> {
     /// A connection error occured.
+    #[error("connection failure: {0}")]
     Service(E),
     /// Unexpected status code.
+    #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(u16),
     /// Error while processing the body.
+    #[error("processing body failed: {0}")]
     Body(HyperError),
     /// Error while decoding the [`MessagePage`].
+    #[error("messagepage decoding failure: {0}")]
     MessagePageDecode(DecodeError),
 }
 
@@ -187,7 +201,8 @@ impl<S> Service<(Uri, GetMessages)> for RelayClient<S>
 where
     S: Service<Request<Body>, Response = Response<Body>>,
     S: Send + Clone + 'static,
-    <S as Service<Request<Body>>>::Future: Send,
+    S::Future: Send,
+    S::Error: fmt::Debug + fmt::Display,
 {
     type Response = MessagePage;
     type Error = GetMessageError<S::Error>;

@@ -6,10 +6,11 @@ pub mod outpoint;
 pub mod output;
 pub mod script;
 
-use std::{convert::TryInto, fmt};
+use std::convert::TryInto;
 
 use bytes::{Buf, BufMut};
 use ring::digest::{digest, SHA256};
+use thiserror::Error;
 
 use crate::{
     var_int::{DecodeError as VarIntDecodeError, VarInt},
@@ -229,33 +230,26 @@ impl Encodable for Transaction {
 }
 
 /// Error associated with [`Transaction`] deserialization.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum DecodeError {
     /// Exhausted buffer when decoding `version` field.
+    #[error("version too short")]
     VersionTooShort,
     /// Failed to decode input count [`VarInt`].
+    #[error("input count: {0}")]
     InputCount(VarIntDecodeError),
     /// Failed to decode an input.
+    #[error("input: {0}")]
     Input(InputDecodeError),
     /// Failed to decode output count [`VarInt`].
+    #[error("output count: {0}")]
     OutputCount(VarIntDecodeError),
     /// Failed to decode an output.
+    #[error("output: {0}")]
     Output(OutputDecodeError),
     /// Exhausted buffer when decoding `locktime` field.
+    #[error("lock time too short")]
     LockTimeTooShort,
-}
-
-impl fmt::Display for DecodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::VersionTooShort => f.write_str("version too short"),
-            Self::InputCount(err) => f.write_str(&format!("input count; {}", err)),
-            Self::Input(err) => f.write_str(&format!("input; {}", err)),
-            Self::OutputCount(err) => f.write_str(&format!("output count; {}", err)),
-            Self::Output(err) => f.write_str(&format!("output; {}", err)),
-            Self::LockTimeTooShort => f.write_str("lock time too short"),
-        }
-    }
 }
 
 impl Decodable for Transaction {
