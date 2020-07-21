@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-token"
-version = "0.1.0-alpha.4"
+version = "0.1.0-alpha.5"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -19,5 +19,5 @@ ring = "0.16.15"
 thiserror = "1.0.20"
 tower-service = "0.3.0"
 
-bitcoin = { version = "0.1.0-alpha.0", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
-bitcoin-client = { version = "0.1.0-alpha.1", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }
+bitcoin = { version = "0.1.0-alpha.1", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
+bitcoin-client = { version = "0.1.0-alpha.2", package = "cashweb-bitcoin-client", path = "../cashweb-bitcoin-client" }

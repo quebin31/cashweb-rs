@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-relay-client"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -21,6 +21,6 @@ tower-service = "0.3.0"
 tower-util = "0.3.1"
 prost = "0.6.1"
 
-auth-wrapper = { version = "0.1.0-alpha.0", package = "cashweb-auth-wrapper", path = "../cashweb-auth-wrapper" }
-relay = { version = "0.1.0-alpha.0", package = "cashweb-relay", path = "../cashweb-relay" }
+auth-wrapper = { version = "0.1.0-alpha.1", package = "cashweb-auth-wrapper", path = "../cashweb-auth-wrapper" }
+relay = { version = "0.1.0-alpha.1", package = "cashweb-relay", path = "../cashweb-relay" }
 secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
