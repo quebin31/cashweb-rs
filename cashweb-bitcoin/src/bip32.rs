@@ -211,7 +211,6 @@ impl ExtendedPrivateKey {
             return *self;
         };
         for num in path_iter {
-            println!("a");
             private_key = private_key.derive_private_child(secp, *num);
         }
         private_key
