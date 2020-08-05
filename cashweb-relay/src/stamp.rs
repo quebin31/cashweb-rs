@@ -109,7 +109,7 @@ pub fn verify_stamp(
             .derive_public_child(&context, child_number)
             .unwrap(); // TODO: Double check this is safe
 
-        for vout in &outpoint.vouts {
+        for (index, vout) in outpoint.vouts.iter().enumerate() {
             let output = tx
                 .outputs
                 .get(*vout as usize)
@@ -121,7 +121,7 @@ pub fn verify_stamp(
             let pubkey_hash = &script.as_bytes()[3..23]; // This is safe as we've checked it's a p2pkh
 
             // Derive child key
-            let child_number = ChildNumber::from_normal_index(*vout)
+            let child_number = ChildNumber::from_normal_index(index as u32)
                 .map_err(|_| StampError::ChildNumberOverflow)?;
             let child_key = tx_child
                 .derive_public_child(&context, child_number)
@@ -157,14 +157,13 @@ pub enum StampKeyError {
 }
 
 /// Construct stamp private key.
-pub fn create_stamp_private_keys<TV, V>(
+pub fn create_stamp_private_keys<O>(
     mut private_key: PrivateKey,
     payload_digest: &[u8; 32],
-    output_profile: TV,
+    output_profile: O,
 ) -> Result<Vec<Vec<PrivateKey>>, StampKeyError>
 where
-    for<'a> &'a TV: IntoIterator<Item = &'a (u32, V)>,
-    for<'a> &'a V: IntoIterator<Item = &'a u32>,
+    for<'a> &'a O: IntoIterator<Item = &'a (u32, u32)>,
 {
     let context = Secp256k1::signing_only();
     private_key
@@ -173,24 +172,22 @@ where
     let master_private_key = ExtendedPrivateKey::new_master(private_key, *payload_digest);
 
     // Create intermediate child
-    let intermediate_child = master_private_key.derive_private_path(
-        &context,
-        &[
-            ChildNumber::from_normal_index(44).unwrap(),
-            ChildNumber::from_normal_index(145).unwrap(),
-        ],
-    );
+    let path_prefix = [
+        ChildNumber::from_normal_index(44).unwrap(),
+        ChildNumber::from_normal_index(145).unwrap(),
+    ];
+    let intermediate_child =
+        master_private_key.derive_private_path::<_, [ChildNumber; 2]>(&context, &path_prefix);
     output_profile
         .into_iter()
-        .map(|(tx_num, vouts)| {
+        .map(|(tx_num, n_index)| {
             // Create intermediate child
             let child_number = ChildNumber::from_normal_index(*tx_num)
                 .map_err(|_| StampKeyError::ChildNumberOverflow)?;
             let tx_child = intermediate_child.derive_private_child(&context, child_number);
-            let private_keys_inner: Result<Vec<_>, _> = vouts
-                .into_iter()
-                .map(|vout| {
-                    let child_number = ChildNumber::from_normal_index(*vout)
+            let private_keys_inner: Result<Vec<_>, _> = (0..*n_index)
+                .map(|index| {
+                    let child_number = ChildNumber::from_normal_index(index)
                         .map_err(|_| StampKeyError::ChildNumberOverflow)?;
                     let tx_child = tx_child.derive_private_child(&context, child_number);
                     Ok(tx_child.into_private_key())
