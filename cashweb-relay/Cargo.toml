@@ -18,7 +18,7 @@ ripemd160 = "0.9.1"
 thiserror = "1.0.20"
 prost = "0.6.1"
 
-bitcoin = { version = "0.1.0-alpha.1", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
+bitcoin = { version = "0.1.0-alpha.2", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }
 secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
 
 [build-dependencies]
