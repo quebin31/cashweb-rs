@@ -156,14 +156,16 @@ pub enum StampKeyError {
     ChildNumberOverflow,
 }
 
-/// Construct stamp private key.
+/// Construct stamp private keys.
+///
+/// The `output_profile` is an iterable collection of the number of each stamp vouts.
 pub fn create_stamp_private_keys<O>(
     mut private_key: PrivateKey,
     payload_digest: &[u8; 32],
     output_profile: O,
 ) -> Result<Vec<Vec<PrivateKey>>, StampKeyError>
 where
-    for<'a> &'a O: IntoIterator<Item = &'a (u32, u32)>,
+    for<'a> &'a O: IntoIterator<Item = &'a u32>,
 {
     let context = Secp256k1::signing_only();
     private_key
@@ -180,9 +182,10 @@ where
         master_private_key.derive_private_path::<_, [ChildNumber; 2]>(&context, &path_prefix);
     output_profile
         .into_iter()
+        .enumerate()
         .map(|(tx_num, n_index)| {
             // Create intermediate child
-            let child_number = ChildNumber::from_normal_index(*tx_num)
+            let child_number = ChildNumber::from_normal_index(tx_num as u32)
                 .map_err(|_| StampKeyError::ChildNumberOverflow)?;
             let tx_child = intermediate_child.derive_private_child(&context, child_number);
             let private_keys_inner: Result<Vec<_>, _> = (0..*n_index)
