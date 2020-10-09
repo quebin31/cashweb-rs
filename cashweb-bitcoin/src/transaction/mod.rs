@@ -49,10 +49,7 @@ impl SignatureHashType {
     /// Checks whether the signature hash is `anyone-can-pay`.
     #[inline]
     pub fn is_anyone_can_pay(&self) -> bool {
-        match self {
-            Self::All | Self::None | Self::Single => true,
-            _ => false,
-        }
+        matches!(self, Self::All | Self::None | Self::Single)
     }
 }
 
