@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-payments"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -14,9 +14,9 @@ categories = ["development-tools"]
 bytes = "0.5.6"
 dashmap = "3.11.10"
 http = "0.2.1"
-hyper = "0.13.7"
+hyper = "0.13.8"
 prost = "0.6.1"
-thiserror = "1.0.20"
+thiserror = "1.0.21"
 tokio = { version = "0.2.22", features = ["time"] }
 
 [build-dependencies]

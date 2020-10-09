@@ -31,7 +31,7 @@
 Add this to your `cargo.toml`
 
 ```toml
-cashweb-rs = "0.1.0-alpha.6"
+cashweb-rs = "0.1.0-alpha.7"
 ```
 
 The current version requires Rust 1.39 or later.

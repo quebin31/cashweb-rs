@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-bitcoin-client"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -12,10 +12,10 @@ categories = ["development-tools"]
 
 [dependencies]
 hex = "0.4.2"
-hyper = { version = "0.13.7", features = ["stream"] }
+hyper = { version = "0.13.8", features = ["stream"] }
 hyper-tls = "0.4.3"
 json-rpc = { package = "async-json-rpc", version = "0.2.2" }
-serde = { version = "1.0.114", features = ["derive"] }
-serde_json = "1.0.57"
-thiserror = "1.0.20"
+serde = { version = "1.0.116", features = ["derive"] }
+serde_json = "1.0.58"
+thiserror = "1.0.21"
 tower-service = "0.3.0"

@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-auth-wrapper"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -13,7 +13,7 @@ categories = ["development-tools"]
 [dependencies]
 ring = "0.16.15"
 prost = "0.6.1"
-thiserror = "1.0.20"
+thiserror = "1.0.21"
 
 secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
 
