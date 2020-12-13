@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-auth-wrapper"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
