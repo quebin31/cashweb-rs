@@ -20,10 +20,8 @@ pub fn extract_pop_header(value: &HeaderValue) -> Option<&str> {
 
 /// Split the POP token, removing the prefix "POP".
 pub fn split_pop_token(full_token: &str) -> Option<&str> {
-    if full_token.len() > 4 {
-        if &full_token[..4] == "POP " {
-            return Some(&full_token[4..]);
-        }
+    if full_token.len() > 4 && &full_token[..4] == "POP " {
+        return Some(&full_token[4..]);
     }
     None
 }
