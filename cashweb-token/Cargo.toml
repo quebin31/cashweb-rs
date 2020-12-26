@@ -1,6 +1,6 @@
 [package]
 name = "cashweb-token"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 authors = ["Harry Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
