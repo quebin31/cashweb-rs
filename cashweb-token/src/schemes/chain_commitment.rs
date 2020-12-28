@@ -9,7 +9,12 @@ use bitcoin::{
     prelude::{Transaction, TransactionDecodeError},
     Decodable,
 };
-use bitcoin_client::{BitcoinClient, HttpClient, HttpsClient, NodeError};
+use bitcoin_client::{
+    BitcoinClient,
+    HttpClient,
+    // HttpsClient,
+    NodeError,
+};
 use hyper::{Body, Request as HttpRequest, Response as HttpResponse};
 use ring::digest::{Context, SHA256};
 use thiserror::Error;
@@ -88,14 +93,14 @@ impl ChainCommitmentScheme<HttpClient> {
     }
 }
 
-impl ChainCommitmentScheme<HttpsClient> {
-    /// Create a [`ChainCommitmentScheme`] from a [`BitcoinClient`] using a standard HTTPS connector.
-    pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
-        Self {
-            client: BitcoinClient::new_tls(endpoint, username, password),
-        }
-    }
-}
+// impl ChainCommitmentScheme<HttpsClient> {
+//     /// Create a [`ChainCommitmentScheme`] from a [`BitcoinClient`] using a standard HTTPS connector.
+//     pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
+//         Self {
+//             client: BitcoinClient::new_tls(endpoint, username, password),
+//         }
+//     }
+// }
 
 impl<S> ChainCommitmentScheme<S>
 where

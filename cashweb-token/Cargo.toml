@@ -12,11 +12,11 @@ categories = ["development-tools"]
 
 [dependencies]
 base64 = "0.13.0"
-http = "0.2.1"
-hyper = { version = "0.13.8", features = ["stream"] }
-hyper-tls = "0.4.3"
-ring = "0.16.15"
-thiserror = "1.0.21"
+http = "0.2.2"
+hyper = { version = "0.14.1", features = ["stream"] }
+# hyper-tls = "0.4.3"
+ring = "0.16.19"
+thiserror = "1.0.23"
 tower-service = "0.3.0"
 
 bitcoin = { version = "0.1.0-alpha.3", package = "cashweb-bitcoin", path = "../cashweb-bitcoin" }

@@ -11,17 +11,17 @@ description = "A library providing a client for use within the cash:web Keyserve
 categories = ["development-tools"]
 
 [dependencies]
-bytes = "0.5.6"
-futures-core = "0.3.6"
-futures-util = "0.3.6"
-hyper = { version = "0.13.8", features = ["stream"] }
-hyper-tls = "0.4.3"
-rand = "0.7.3"
-thiserror = "1.0.21"
-tokio = { version = "0.2.22", features = ["sync"] }
+bytes = "1.0.0"
+futures-core = "0.3.8"
+futures-util = "0.3.8"
+hyper = { version = "0.14.1", features = ["stream"] }
+# hyper-tls = "0.4.3"
+rand = "0.8.0"
+thiserror = "1.0.22"
+tokio = { version = "1.0.1", features = ["sync"] }
 tower-service = "0.3.0"
 tower-util = "0.3.1"
-prost = "0.6.1"
+prost = { git = "https://github.com/danburkert/prost.git" }
 
 auth-wrapper = { version = "0.1.0-alpha.3", package = "cashweb-auth-wrapper", path = "../cashweb-auth-wrapper" }
 keyserver = { version = "0.1.0-alpha.3", package = "cashweb-keyserver", path = "../cashweb-keyserver" }

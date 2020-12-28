@@ -6,7 +6,7 @@ use std::{error, fmt};
 
 use bytes::Bytes;
 use hyper::{client::HttpConnector, http::uri::InvalidUri, Client as HyperClient};
-use hyper_tls::HttpsConnector;
+// use hyper_tls::HttpsConnector;
 use secp256k1::key::PublicKey;
 use thiserror::Error;
 use tower_service::Service;
@@ -86,15 +86,15 @@ impl KeyserverClient<HyperClient<HttpConnector>> {
     }
 }
 
-impl KeyserverClient<HyperClient<HttpsConnector<HttpConnector>>> {
-    /// Create new HTTPS client.
-    pub fn new_tls() -> Self {
-        let https = HttpsConnector::new();
-        Self {
-            inner_client: HyperClient::builder().build(https),
-        }
-    }
-}
+// impl KeyserverClient<HyperClient<HttpsConnector<HttpConnector>>> {
+//     /// Create new HTTPS client.
+//     pub fn new_tls() -> Self {
+//         let https = HttpsConnector::new();
+//         Self {
+//             inner_client: HyperClient::builder().build(https),
+//         }
+//     }
+// }
 
 impl<S> KeyserverClient<S>
 where
