@@ -14,8 +14,8 @@ categories = ["development-tools"]
 bytes = "1.0.0"
 futures-core = "0.3.8"
 futures-util = "0.3.8"
-hyper = { version = "0.14.1", features = ["stream"] }
-# hyper-tls = "0.4.3"
+hyper = { version = "0.14.2", features = ["stream"] }
+hyper-tls = "0.5.0"
 rand = "0.8.0"
 thiserror = "1.0.23"
 tokio = { version = "1.0.1", features = ["sync"] }

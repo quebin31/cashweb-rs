@@ -13,7 +13,7 @@ use hyper::{
     client::HttpConnector, Body, Client as HyperClient, Error as HyperError,
     Request as HttpRequest, Response as HttpResponse,
 };
-// use hyper_tls::HttpsConnector;
+use hyper_tls::HttpsConnector;
 use json_rpc::{
     clients::{
         http::{Client as JsonClient, ConnectionError},
@@ -29,7 +29,7 @@ use tower_service::Service;
 pub type HttpClient = HyperClient<HttpConnector>;
 
 /// Standard HTTPs client.
-// pub type HttpsClient = HyperClient<HttpsConnector<HttpConnector>>;
+pub type HttpsClient = HyperClient<HttpsConnector<HttpConnector>>;
 
 /// Standard HTTP error.
 pub type HttpError = NodeError<HyperError>;
@@ -57,16 +57,16 @@ impl BitcoinClient<HyperClient<HttpConnector>> {
     }
 }
 
-// impl BitcoinClient<HyperClient<HttpsConnector<HttpConnector>>> {
-//     /// Create a new HTTPS [`BitcoinClient`].
-//     pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
-//         BitcoinClient(JsonClient::new_tls(
-//             endpoint,
-//             Some(username),
-//             Some(password),
-//         ))
-//     }
-// }
+impl BitcoinClient<HyperClient<HttpsConnector<HttpConnector>>> {
+    /// Create a new HTTPS [`BitcoinClient`].
+    pub fn new_tls(endpoint: String, username: String, password: String) -> Self {
+        BitcoinClient(JsonClient::new_tls(
+            endpoint,
+            Some(username),
+            Some(password),
+        ))
+    }
+}
 
 impl<C> std::ops::Deref for BitcoinClient<C> {
     type Target = JsonClient<C>;
