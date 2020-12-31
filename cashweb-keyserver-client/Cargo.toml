@@ -25,4 +25,4 @@ prost = "0.7.0"
 
 auth-wrapper = { version = "0.1.0-alpha.3", package = "cashweb-auth-wrapper", path = "../cashweb-auth-wrapper" }
 keyserver = { version = "0.1.0-alpha.3", package = "cashweb-keyserver", path = "../cashweb-keyserver" }
-secp256k1 = { package = "cashweb-secp256k1", version = "0.17.3" }
+secp256k1 = { package = "cashweb-secp256k1", version = "0.20.0" }
