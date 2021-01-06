@@ -109,7 +109,7 @@ pub fn verify_stamp(
             .derive_public_child(&context, child_number)
             .unwrap(); // TODO: Double check this is safe
 
-        for (index, vout) in outpoint.vouts.iter().enumerate() {
+        for vout in outpoint.vouts.iter() {
             let output = tx
                 .outputs
                 .get(*vout as usize)
@@ -121,7 +121,7 @@ pub fn verify_stamp(
             let pubkey_hash = &script.as_bytes()[3..23]; // This is safe as we've checked it's a p2pkh
 
             // Derive child key
-            let child_number = ChildNumber::from_normal_index(index as u32)
+            let child_number = ChildNumber::from_normal_index(*vout)
                 .map_err(|_| StampError::ChildNumberOverflow)?;
             let child_key = tx_child
                 .derive_public_child(&context, child_number)
