@@ -14,7 +14,7 @@ categories = ["development-tools"]
 futures-core = "0.3"
 futures-util = "0.3"
 http = "0.2"
-hyper = { version = "0.14", features = ["stream"] }
+hyper = { version = "0.14", features = ["client", "http1", "tcp", "stream"] }
 rand = "0.8"
 thiserror = "1"
 tower-service = "0.3"
