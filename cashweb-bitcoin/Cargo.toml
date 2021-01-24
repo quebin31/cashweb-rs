@@ -21,7 +21,7 @@ secp256k1 = { package = "cashweb-secp256k1", version = "0.19" }
 [dev-dependencies]
 hex = "0.4"
 criterion = "0.3"
-rand = "0.8"
+rand = "0.6"
 
 secp256k1 = { package = "cashweb-secp256k1", version = "0.19", features = ["rand"] }
 
